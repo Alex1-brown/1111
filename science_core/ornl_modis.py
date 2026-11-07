@@ -7,6 +7,7 @@ required for this ORNL subset endpoint.
 from __future__ import annotations
 
 import json
+import re
 import time
 from datetime import date
 from urllib.error import HTTPError, URLError
@@ -25,6 +26,19 @@ GOOD_QUALITY = 0
 
 class ModisSubsetError(RuntimeError):
     """Raised when the source API returns incomplete or invalid MODIS data."""
+
+
+def _extract_product_version(item: dict[str, object]) -> str | None:
+    """Extract MODIS collection version from explicit metadata or granule filename."""
+    explicit = item.get("version")
+    if explicit:
+        return str(explicit)
+    filename = str(item.get("filename", ""))
+    match = re.search(r"\\.(\\d{3})\\.\\d{13}(?:\\.|$)", filename)
+    if match:
+        return match.group(1)
+    match = re.search(r"\\.(\\d{3})\\.", filename)
+    return match.group(1) if match else None
 
 
 def _get_json(path: str, params: dict[str, object], timeout: int = 90,
@@ -149,9 +163,12 @@ def fetch_mod13q1(
             if modis_date not in ndvi_rows or modis_date not in quality_rows:
                 raise ModisSubsetError(f"Missing NDVI or QA layer for composite {modis_date}.")
             ndvi_item, qa_item = ndvi_rows[modis_date], quality_rows[modis_date]
-            version = str(ndvi_item.get("version", ""))
+            version = _extract_product_version(ndvi_item)
             if not version:
-                raise ModisSubsetError(f"Source product version is missing for {modis_date}.")
+                raise ModisSubsetError(
+                    f"Source product version is missing for {modis_date}; "
+                    f"available subset fields: {sorted(ndvi_item.keys())}"
+                )
             if version != expected_version:
                 raise ModisSubsetError(
                     f"Expected MOD13Q1 version {expected_version}, received {version}; "
@@ -171,6 +188,8 @@ def fetch_mod13q1(
                 "nrows": rows,
                 "ncols": cols,
                 "cellsize_m": float(ndvi_payload["cellsize"]),
+                "xllcorner_m": float(ndvi_payload["xllcorner"]),
+                "yllcorner_m": float(ndvi_payload["yllcorner"]),
                 "latitude": float(ndvi_payload["latitude"]),
                 "longitude": float(ndvi_payload["longitude"]),
                 "header": str(ndvi_payload.get("header", "")),

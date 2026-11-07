@@ -40,6 +40,7 @@ class ORNLModisTests(unittest.TestCase):
                 payload = {
                     "nrows": 2, "ncols": 2, "cellsize": 231.656,
                     "latitude": 38.5, "longitude": 68.7,
+                    "xllcorner": 1000.0, "yllcorner": 2000.0,
                     "header": "source metadata",
                     "subset": [
                         {
@@ -86,6 +87,28 @@ class ORNLModisTests(unittest.TestCase):
         with self.assertRaisesRegex(ModisSubsetError, "refusing to mix product versions"):
             fetch_mod13q1(38.5, 68.7, "2020-01-01", "2020-12-31",
                           opener=opener, pause_seconds=0)
+
+    def test_filename_supplies_product_version_when_version_field_absent(self):
+        dates = [{"calendar_date": "2020-02-18", "modis_date": "A2020049"}]
+        def opener(request, timeout=90):
+            parsed = urlparse(request.full_url)
+            params = parse_qs(parsed.query)
+            if parsed.path.endswith("/dates"):
+                return FakeResponse(dates)
+            band = params["band"][0]
+            return FakeResponse({
+                "nrows": 1, "ncols": 1, "cellsize": 231.656,
+                "latitude": 38.5, "longitude": 68.7,
+                "xllcorner": 1000.0, "yllcorner": 2000.0,
+                "subset": [{
+                    "band": band, "modis_date": "A2020049",
+                    "data": [5000 if band == NDVI_BAND else 0],
+                    "filename": "MOD13Q1.A2020049.h23v05.061.2020060000000",
+                }],
+            })
+        result = fetch_mod13q1(38.5, 68.7, "2020-01-01", "2020-12-31",
+                               opener=opener, pause_seconds=0)
+        self.assertEqual(result["product_versions"], ["061"])
 
     def test_empty_date_range_fails(self):
         def opener(request, timeout=90):

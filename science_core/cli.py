@@ -15,7 +15,7 @@ from .analysis import valid_values
 from .statistical_analysis import analyze_power_timeseries
 from .ornl_modis import fetch_mod13q1
 from .spatial_analysis import (
-    annual_pixel_medians, analyze_pixel_trends, sinusoidal_pixel_center,
+    annual_pixel_medians, analyze_pixel_trends, sinusoidal_pixel_center_from_origin,
 )
 from .cross_source_analysis import analyze_monthly_cross_source
 from .visualization import render_line_chart
@@ -103,8 +103,8 @@ def main() -> int:
             grid_meta = ndvi_data["grid"]
             features = []
             for trend in pixel_trends:
-                lon, lat = sinusoidal_pixel_center(
-                    grid_meta["latitude"], grid_meta["longitude"],
+                lon, lat = sinusoidal_pixel_center_from_origin(
+                    grid_meta["xllcorner_m"], grid_meta["yllcorner_m"],
                     trend["row"], trend["column"],
                     grid_meta["nrows"], grid_meta["ncols"],
                     grid_meta["cellsize_m"],
@@ -217,9 +217,9 @@ def main() -> int:
                     "monthly_cross_source_csv": cross_source_summary.get("artifact_csv"),
                 },
                 "geolocation_warning": (
-                    "GeoJSON pixel centers are approximate: the requested center is treated as the "
-                    "middle pixel center and offsets are inverted using the MODIS sinusoidal sphere. "
-                    "Verify against authoritative source geotransform before high-precision mapping."
+                    "GeoJSON pixel centers use the ORNL source xllcorner/yllcorner and cellsize "
+                    "metadata in the MODIS sinusoidal projection. Row orientation is assumed north-to-south; "
+                    "verify against a reference raster before high-precision boundary use."
                 ),
                 "scientific_limitations": [
                     "MOD13Q1 is a 16-day best-pixel composite, not a daily observation.",

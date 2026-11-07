@@ -132,3 +132,31 @@ def sinusoidal_pixel_center(
         raise ValueError("Cannot invert sinusoidal coordinates near the poles.")
     lon = x / (radius * cos(lat))
     return lon * 180.0 / pi, lat * 180.0 / pi
+
+
+def sinusoidal_pixel_center_from_origin(
+    xllcorner_m: float,
+    yllcorner_m: float,
+    row: int,
+    column: int,
+    nrows: int,
+    ncols: int,
+    cellsize_m: float,
+) -> tuple[float, float]:
+    """Convert a MODIS sinusoidal raster row/column using source grid origin.
+
+    xllcorner_m and yllcorner_m are the lower-left outer-corner coordinates
+    supplied by the ORNL DAAC subset response. Row zero is the northernmost row.
+    """
+    if nrows < 1 or ncols < 1 or not (0 <= row < nrows and 0 <= column < ncols):
+        raise ValueError("Pixel indices must lie inside a positive-sized grid.")
+    if not all(isfinite(v) for v in (xllcorner_m, yllcorner_m, cellsize_m)) or cellsize_m <= 0:
+        raise ValueError("Grid origin and cell size must be finite; cell size must be positive.")
+    radius = MODIS_SINUSOIDAL_RADIUS_M
+    x = xllcorner_m + (column + 0.5) * cellsize_m
+    y = yllcorner_m + (nrows - row - 0.5) * cellsize_m
+    latitude_rad = y / radius
+    if abs(cos(latitude_rad)) < 1e-12:
+        raise ValueError("Cannot invert sinusoidal coordinates near the poles.")
+    longitude_rad = x / (radius * cos(latitude_rad))
+    return longitude_rad * 180.0 / pi, latitude_rad * 180.0 / pi

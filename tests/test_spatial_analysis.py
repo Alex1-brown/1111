@@ -2,7 +2,7 @@ import unittest
 
 from science_core.spatial_analysis import (
     annual_pixel_medians, analyze_pixel_trends, benjamini_yekutieli,
-    sinusoidal_pixel_center,
+    sinusoidal_pixel_center, sinusoidal_pixel_center_from_origin,
 )
 
 
@@ -47,6 +47,19 @@ class SpatialAnalysisTests(unittest.TestCase):
         lon, lat = sinusoidal_pixel_center(38.5598, 68.787, 4, 4, 9, 9, 231.656)
         self.assertAlmostEqual(lon, 68.787, places=10)
         self.assertAlmostEqual(lat, 38.5598, places=10)
+
+    def test_exact_origin_grid_center_matches_expected_location(self):
+        from math import cos, pi
+        from science_core.spatial_analysis import MODIS_SINUSOIDAL_RADIUS_M
+        latitude, longitude, cell = 38.5598, 68.787, 231.656
+        lat_r, lon_r = latitude * pi / 180, longitude * pi / 180
+        x_center = MODIS_SINUSOIDAL_RADIUS_M * lon_r * cos(lat_r)
+        y_center = MODIS_SINUSOIDAL_RADIUS_M * lat_r
+        xll = x_center - 4.5 * cell
+        yll = y_center - 4.5 * cell
+        lon, lat = sinusoidal_pixel_center_from_origin(xll, yll, 4, 4, 9, 9, cell)
+        self.assertAlmostEqual(lon, longitude, places=9)
+        self.assertAlmostEqual(lat, latitude, places=9)
 
     def test_sinusoidal_grid_adjacent_pixel_moves(self):
         center = sinusoidal_pixel_center(38.5598, 68.787, 4, 4, 9, 9, 231.656)
