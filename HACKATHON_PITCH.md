@@ -1,0 +1,79 @@
+# Hackathon project brief — Earth System Trend Detective Engine
+
+## One-sentence description
+
+A reproducible, evidence-first workflow that detects where Earth-system indicators change, estimates how much they change, checks whether patterns are statistically supported, and exposes data-quality limitations instead of hiding them.
+
+## Problem
+
+Open Earth-observation and climate datasets are powerful but difficult to compare responsibly. A chart can make a noisy, incomplete, or spatially inconsistent dataset look convincing. Analysts need a repeatable way to screen data quality, align observations, distinguish real signals from coverage artifacts, and communicate uncertainty.
+
+## Solution
+
+The project combines NASA gridded climate data and NASA satellite vegetation observations in a modular workflow:
+
+**Acquire → Validate → Clean → Process → Verify → Visualize**
+
+The pipeline is deliberately modular: the workflow is reusable, while scientific calculations remain specific to each variable and dataset. It does not claim one mathematical formula can correctly analyze every kind of information.
+
+## NASA data used
+
+- **NASA POWER Daily** — 2 m air temperature (T2M) and corrected precipitation (PRECTOTCORR), daily point extraction.
+- **NASA MODIS/Terra MOD13Q1.061** — 250 m, 16-day NDVI and pixel-reliability data, accessed as cloud-optimized GeoTIFFs through the Microsoft Planetary Computer STAC collection.
+
+The current demonstration samples a 17 × 17 MODIS pixel window around the selected location. One 16-day composite is selected per calendar month, nearest to mid-month. Only pixel-reliability code 0 is accepted. An annual pixel median requires at least three quality-screened monthly composites.
+
+## How the analysis works
+
+1. Validate source metadata, units, dates, coordinate reference systems, missing values and product version.
+2. Screen MODIS pixels using the official pixel-reliability layer.
+3. Select the longest continuous MODIS period with at least 11 monthly composites in every year. For the current location and collection snapshot, this produces a core trend period of **2003–2023**. The 2001–2002 and 2024–2025 coverage is incomplete and is not used for long-term trend inference.
+4. Calculate annual per-pixel NDVI medians, then estimate per-pixel Sen slopes and Mann–Kendall trends.
+5. Apply Benjamini–Yekutieli correction across the spatial family of pixel tests. These q-values remain exploratory because temporal autocorrelation has not yet been corrected in the underlying pixel p-values.
+6. Build an annual aggregate from a fixed set of pixels present in every year of the core period, reducing bias from changing spatial coverage.
+7. Apply Pettitt change-point screening and robust median-absolute-deviation anomaly screening to annual series.
+8. Align monthly NDVI with NASA POWER temperature and precipitation anomalies over their common, adequately covered period. Correlations are exploratory associations, not causal evidence or direct validation of the climate product.
+
+## What the user receives
+
+- A self-contained offline HTML report with a clickable spatial trend grid.
+- SVG charts for annual NDVI, spatial coverage, temperature and precipitation.
+- CSV tables for annual, monthly, seasonal and per-pixel results.
+- GeoJSON trend features that can be opened in GIS software.
+- A JSON report recording sources, parameters, results and scientific limitations.
+
+## Why it is useful
+
+The system answers the central trend-detection questions:
+
+- **What changed?** — identifies the indicator and detected pattern.
+- **Where?** — maps the spatial distribution of per-pixel trends.
+- **How much?** — estimates change rates with Sen's slope.
+- **How well supported?** — reports p-values, spatial q-values, coverage, quality filters and limitations.
+
+It also makes incomplete coverage visible. Years with insufficient monthly observations are excluded from trend inference rather than being silently treated as complete.
+
+## Scientific safeguards and current limits
+
+- NASA POWER gridded values are not local weather-station measurements.
+- NDVI measures vegetation greenness; it is not air temperature or precipitation.
+- MODIS NDVI and NASA POWER have different spatial supports.
+- Correlation does not establish causation or validate either source.
+- Mann–Kendall and Pettitt p-values are not adjusted for temporal autocorrelation; spatial q-values are therefore exploratory, not definitive significance claims.
+- The current spatial window is a local sample, not a region-wide census.
+- The Planetary Computer STAC collection has its own license metadata; source redistribution must follow the current collection terms and NASA LP DAAC citation guidance.
+
+## Next scientific upgrades
+
+1. Add a temporal-autocorrelation-aware trend test or block-bootstrap inference.
+2. Add an independent precipitation dataset such as GPM IMERG for a more direct precipitation cross-check.
+3. Add quality-screened MODIS land-surface temperature, clearly distinguished from 2 m air temperature.
+4. Expand from a local pixel window to a regional grid and evaluate sensitivity to spatial scale.
+5. Add a benchmark suite using synthetic series with known trends, change points, missingness and autocorrelation.
+
+## Primary references
+
+- NASA POWER: https://power.larc.nasa.gov/docs/services/api/temporal/daily/
+- NASA MOD13Q1.061 DOI: https://doi.org/10.5067/MODIS/MOD13Q1.061
+- Planetary Computer MODIS 13Q1 collection: https://planetarycomputer.microsoft.com/api/stac/v1/collections/modis-13Q1-061
+- NASA Space Apps challenge: https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/
