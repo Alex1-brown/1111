@@ -97,7 +97,7 @@ class AnalysisTests(unittest.TestCase):
         self.assertEqual(len(result["annual"]), 3)
         self.assertAlmostEqual(result["descriptive_linear_trends"]["annual_mean_temperature"]["slope_per_year"], 1.0)
         self.assertEqual(len(result["monthly_climatology"]), 1)
-        self.assertEqual(result["daily_temperature_precipitation_pearson_r"], None if False else result["daily_temperature_precipitation_pearson_r"])
+        self.assertAlmostEqual(result["daily_temperature_precipitation_pearson_r"], -0.7977240352, places=8)
 
     def test_power_timeseries_requires_overlapping_dates(self):
         with self.assertRaises(ValueError):
