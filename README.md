@@ -61,6 +61,8 @@ The live CLI now retrieves NASA MODIS/Terra MOD13Q1.061 NDVI and pixel-reliabili
 
 Default NDVI period: 2001-01-01 through 2025-12-31; local subset radius: 2 km around the POWER reference coordinate (approximately 4 × 4 km). The live data source is the explicit MOD13Q1.061 STAC collection; item IDs are checked for collection 061. COG pixel windows are read using HTTP range requests and a container-scoped Planetary Computer SAS token. The report records collection ID, tile IDs, COG grid CRS/transform and quality policy.
 
+Licensing note: the Planetary Computer STAC collection declares its license as proprietary, while listing NASA LP DAAC as producer/licensor/processor. Before redistributing source assets, follow the collection's current license metadata, NASA LP DAAC citation guidance and Planetary Computer data-license terms.
+
 Important limits: NDVI is a vegetation indicator, not a direct measurement of climate or air temperature. Annual aggregation suppresses seasonality. Temporal autocorrelation is not yet corrected in the Mann-Kendall p-values. A spatially significant trend is not automatically a causal explanation.
 
 
@@ -83,6 +85,7 @@ The default live validation workflow skips NASA GIBS true-colour browse imagery 
 - NASA MODIS/Terra MOD13Q1 Version 6.1 product and citation: https://doi.org/10.5067/MODIS/MOD13Q1.061
 - Microsoft Planetary Computer MODIS 13Q1 Collection 061: https://planetarycomputer.microsoft.com/api/stac/v1/collections/modis-13Q1-061
 - Microsoft Planetary Computer SAS token documentation: https://planetarycomputer.microsoft.com/docs/concepts/sas/
+- Microsoft Planetary Computer data-license guidance: https://planetarycomputer.microsoft.com/docs/overview/about/#data-licenses
 - NASA POWER Daily API documentation: https://power.larc.nasa.gov/docs/services/api/temporal/daily/
 
 The project records product version, source, DOI, units, QA policy and analysis settings in its generated report. If a source response does not match the expected product version or schema, the pipeline fails that data stage rather than silently mixing incompatible records.
