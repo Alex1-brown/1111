@@ -1,0 +1,45 @@
+import tempfile
+import unittest
+from pathlib import Path
+
+from science_core.html_report import render_html_report
+
+
+class HTMLReportTests(unittest.TestCase):
+    def test_render_contains_summary_grid_and_caveats(self):
+        with tempfile.TemporaryDirectory() as folder:
+            chart = Path(folder) / "chart.svg"
+            chart.write_text("<svg xmlns='http://www.w3.org/2000/svg'></svg>", encoding="utf-8")
+            report = {
+                "generated_at_utc": "2026-11-07T00:00:00Z",
+                "modis_ndvi": {
+                    "composite_count": 12,
+                    "available_composite_count": 24,
+                    "fixed_panel_pixels": 8,
+                    "grid": {"nrows": 2, "ncols": 2},
+                    "annual_fixed_panel_change_detection": {
+                        "pettitt": {"change_point_year": 2018}
+                    },
+                },
+                "power_time_series_analysis": {"paired_valid_days": 100},
+                "cross_source_monthly_analysis": {"common_months": 10},
+            }
+            trends = [
+                {"row": 0, "column": 0, "sen_slope_ndvi_per_year": -0.01, "q_value_by": 0.02, "years": 20},
+                {"row": 0, "column": 1, "sen_slope_ndvi_per_year": 0.01, "q_value_by": 0.08, "years": 20},
+            ]
+            html = render_html_report(report, trends, {"annual_ndvi.svg": str(chart)})
+            self.assertIn("Earth System Trend Detective", html)
+            self.assertIn("Select a grid cell", html)
+            self.assertIn("temporal autocorrelation", html)
+            self.assertIn("2018", html)
+            self.assertIn("<svg", html)
+
+    def test_render_handles_missing_charts_and_grid(self):
+        html = render_html_report({}, [], {})
+        self.assertIn("Spatial trend grid unavailable", html)
+        self.assertIn("Chart unavailable", html)
+
+
+if __name__ == "__main__":
+    unittest.main()
