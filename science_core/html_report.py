@@ -96,7 +96,9 @@ def render_html_report(
     common_months = cross.get("common_months", "n/a")
     summary = report.get("summary", {})
     pettitt = ndvi.get("annual_fixed_panel_change_detection", {}).get("pettitt", {})
-    change_year = pettitt.get("change_point_year", "not detected")
+    change_year = pettitt.get("change_point_year")
+    if change_year is None:
+        change_year = "not detected"
 
     charts = []
     for key, title in (
@@ -203,7 +205,7 @@ footer{{margin-top:34px;color:var(--muted);font-size:13px}}
 <section class="caveat">
 Mann–Kendall and Pettitt p-values are not adjusted for temporal autocorrelation. Spatial BY q-values are therefore exploratory, not definitive significance claims. NDVI measures vegetation greenness, not temperature or precipitation. POWER is gridded data, not a local weather-station record. Correlation does not prove causation. The spatial grid is a local sample, not a region-wide census.
 </section>
-<footer>Data sources: NASA POWER; NASA LP DAAC MOD13Q1.061 hosted by Microsoft Planetary Computer. Consult the repository README for citations, product DOI, licensing notes and reproducibility instructions.</footer>
+<footer>Data sources: <a href="https://power.larc.nasa.gov/">NASA POWER</a>; <a href="https://doi.org/10.5067/MODIS/MOD13Q1.061">NASA LP DAAC MOD13Q1.061</a>; <a href="https://planetarycomputer.microsoft.com/api/stac/v1/collections/modis-13Q1-061">Microsoft Planetary Computer STAC collection</a>. Consult the repository README for citation, licensing notes and reproducibility instructions.</footer>
 <script>
 const reportData = {safe_report};
 document.querySelectorAll(".pixel").forEach((cell) => {{
