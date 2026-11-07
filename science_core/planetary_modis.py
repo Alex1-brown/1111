@@ -383,6 +383,7 @@ def fetch_mod13q1(
         "end_date": str(items[-1]["__composite_date"]),
         "composite_count": len(items),
         "available_composite_count": len(all_items),
+        "composite_dates": [str(item["__composite_date"]) for item in items],
         "sampling_strategy": "One 16-day composite per calendar month, nearest to day 15.",
         "grid": grid,
         "tile_ids": sorted(set(tile_ids)),

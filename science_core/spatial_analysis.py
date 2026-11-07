@@ -198,3 +198,42 @@ def summarize_fixed_annual_panel(
             "fixed_panel_pixels": len(values),
         })
     return rows, len(fixed_pixels)
+
+
+def select_complete_year_range(
+    composite_dates: Iterable[str],
+    minimum_composites_per_year: int = 11,
+    minimum_years: int = 15,
+) -> tuple[int, int, dict[int, int]]:
+    """Find the longest consecutive period meeting annual composite coverage.
+
+    Dates are selected monthly MODIS composite start dates. The chosen period
+    is the longest contiguous run with at least the requested number of
+    monthly composites in every year; ties prefer the more recent run.
+    """
+    if minimum_composites_per_year < 1:
+        raise ValueError("minimum_composites_per_year must be at least 1.")
+    if minimum_years < 1:
+        raise ValueError("minimum_years must be at least 1.")
+    counts: dict[int, int] = defaultdict(int)
+    for raw_date in composite_dates:
+        value = str(raw_date)
+        if len(value) < 4 or not value[:4].isdigit():
+            raise ValueError(f"Invalid MODIS composite date: {value!r}")
+        counts[int(value[:4])] += 1
+    eligible = sorted(year for year, count in counts.items()
+                      if count >= minimum_composites_per_year)
+    runs: list[list[int]] = []
+    for year in eligible:
+        if not runs or year != runs[-1][-1] + 1:
+            runs.append([year])
+        else:
+            runs[-1].append(year)
+    candidates = [run for run in runs if len(run) >= minimum_years]
+    if not candidates:
+        raise ValueError(
+            "No contiguous MODIS period meets the requested annual composite "
+            f"coverage ({minimum_composites_per_year}/year for {minimum_years} years)."
+        )
+    chosen = max(candidates, key=lambda run: (len(run), run[-1]))
+    return chosen[0], chosen[-1], dict(sorted(counts.items()))

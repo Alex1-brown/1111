@@ -3,6 +3,7 @@ import unittest
 from science_core.spatial_analysis import (
     annual_pixel_medians, analyze_pixel_trends, benjamini_yekutieli,
     sinusoidal_pixel_center, sinusoidal_pixel_center_from_origin, summarize_fixed_annual_panel,
+    select_complete_year_range,
 )
 
 
@@ -54,6 +55,21 @@ class SpatialAnalysisTests(unittest.TestCase):
         self.assertAlmostEqual(result[0]["sen_slope_ndvi_per_year"], 0.01)
         self.assertTrue(result[0]["by_q_le_0_05_temporal_uncorrected"])
         self.assertFalse(result[1]["by_q_le_0_05_temporal_uncorrected"])
+
+    def test_complete_year_range_excludes_partial_years(self):
+        dates = (
+            ["2001-01-15"] * 5 + ["2002-01-15"] * 10
+            + [f"{year}-{month:02d}-15" for year in range(2003, 2024) for month in range(1, 13)]
+            + ["2024-01-15", "2024-02-15", "2025-06-15", "2025-11-15", "2025-12-15"]
+        )
+        start, end, counts = select_complete_year_range(dates, 11, 15)
+        self.assertEqual((start, end), (2003, 2023))
+        self.assertEqual(counts[2024], 2)
+        self.assertEqual(counts[2025], 3)
+
+    def test_complete_year_range_requires_long_enough_period(self):
+        with self.assertRaises(ValueError):
+            select_complete_year_range(["2020-01-15", "2021-01-15"], 11, 3)
 
     def test_fixed_panel_uses_only_pixels_with_all_requested_years(self):
         data = {

@@ -16,6 +16,7 @@ from .statistical_analysis import analyze_power_timeseries
 from .planetary_modis import fetch_mod13q1, pixel_center_lonlat
 from .spatial_analysis import (
     annual_pixel_medians, analyze_pixel_trends, summarize_fixed_annual_panel,
+    select_complete_year_range,
 )
 from .trend_analysis import mann_kendall
 from .change_point import pettitt_test
@@ -48,6 +49,8 @@ def main() -> int:
     parser.add_argument("--ndvi-minimum-years", type=int, default=15)
     parser.add_argument("--ndvi-minimum-composites-per-pixel-year", type=int, default=3,
                         help="Minimum quality-screened monthly composites for an annual pixel median")
+    parser.add_argument("--ndvi-minimum-monthly-composites-per-year", type=int, default=11,
+                        help="Monthly composites/year required to include a year in the trend period")
     parser.add_argument("--skip-ndvi", action="store_true",
                         help="Skip quantitative MODIS NDVI download and spatial analysis")
     parser.add_argument("--output", type=Path, default=Path("artifacts"))
@@ -62,6 +65,8 @@ def main() -> int:
         parser.error("--ndvi-minimum-years must be at least 3")
     if args.ndvi_minimum_composites_per_pixel_year < 1:
         parser.error("--ndvi-minimum-composites-per-pixel-year must be at least 1")
+    if args.ndvi_minimum_monthly_composites_per_year < 1:
+        parser.error("--ndvi-minimum-monthly-composites-per-year must be at least 1")
     if not 1 <= args.ndvi_radius_km <= 100:
         parser.error("--ndvi-radius-km must be between 1 and 100")
     if args.skip_gibs:
@@ -109,8 +114,22 @@ def main() -> int:
                 ndvi_data["valid_observations"],
                 minimum_observations_per_year=args.ndvi_minimum_composites_per_pixel_year,
             )
+            trend_start_year, trend_end_year, composite_counts_by_year = select_complete_year_range(
+                ndvi_data["composite_dates"],
+                minimum_composites_per_year=args.ndvi_minimum_monthly_composites_per_year,
+                minimum_years=args.ndvi_minimum_years,
+            )
+            annual_pixels_core = {
+                pixel: [(year, value) for year, value in series
+                        if trend_start_year <= year <= trend_end_year]
+                for pixel, series in annual_pixels.items()
+            }
+            annual_pixels_core = {
+                pixel: series for pixel, series in annual_pixels_core.items()
+                if len(series) >= args.ndvi_minimum_years
+            }
             pixel_trends = analyze_pixel_trends(
-                annual_pixels, minimum_years=args.ndvi_minimum_years
+                annual_pixels_core, minimum_years=args.ndvi_minimum_years
             )
             grid_meta = ndvi_data["grid"]
             features = []
@@ -145,7 +164,7 @@ def main() -> int:
                 for year, value in series:
                     annual_buckets[year].append(value)
             fixed_panel_rows, fixed_panel_pixel_count = summarize_fixed_annual_panel(
-                annual_pixels, int(args.ndvi_start[:4]), int(args.ndvi_end[:4])
+                annual_pixels_core, trend_start_year, trend_end_year
             )
             fixed_by_year = {row["year"]: row for row in fixed_panel_rows}
             annual_years = sorted(set(annual_buckets) | set(fixed_by_year))
@@ -157,9 +176,10 @@ def main() -> int:
                         sum(annual_buckets[year]) / len(annual_buckets[year]) if annual_buckets[year] else None
                     ),
                     "pixels_with_valid_data": len(annual_buckets[year]),
-                    "fixed_panel_median": fixed_by_year[year]["fixed_panel_median"],
-                    "fixed_panel_mean": fixed_by_year[year]["fixed_panel_mean"],
-                    "fixed_panel_pixels": fixed_by_year[year]["fixed_panel_pixels"],
+                    "fixed_panel_median": fixed_by_year.get(year, {}).get("fixed_panel_median"),
+                    "fixed_panel_mean": fixed_by_year.get(year, {}).get("fixed_panel_mean"),
+                    "fixed_panel_pixels": fixed_by_year.get(year, {}).get("fixed_panel_pixels", 0),
+                    "trend_period_included": year in fixed_by_year,
                 }
                 for year in annual_years
             ]
@@ -169,7 +189,7 @@ def main() -> int:
             ]
             ndvi_change_detection = {
                 "fixed_panel_pixels": fixed_panel_pixel_count,
-                "period": [int(args.ndvi_start[:4]), int(args.ndvi_end[:4])],
+                "period": [trend_start_year, trend_end_year],
                 "mann_kendall_sen": mann_kendall(
                     [(float(year), value) for year, value in fixed_ndvi_series]
                 ),
@@ -187,7 +207,7 @@ def main() -> int:
                 fields = [
                     "year", "median_of_pixel_annual_medians",
                     "mean_of_pixel_annual_medians", "pixels_with_valid_data",
-                    "fixed_panel_median", "fixed_panel_mean", "fixed_panel_pixels",
+                    "fixed_panel_median", "fixed_panel_mean", "fixed_panel_pixels", "trend_period_included",
                 ]
                 writer = csv.DictWriter(csv_file, fieldnames=fields)
                 writer.writeheader()
@@ -199,7 +219,7 @@ def main() -> int:
                 cross_source = analyze_monthly_cross_source(
                     temperature_series, precipitation_series,
                     ndvi_data["valid_observations"],
-                    start_year=common_start_year, end_year=common_end_year,
+                    start_year=common_start_year, end_year=min(common_end_year, trend_end_year),
                 )
                 cross_path = ndvi_dir / "monthly_cross_source.csv"
                 cross_fields = [
@@ -237,6 +257,9 @@ def main() -> int:
                 "date_start": ndvi_data["start_date"],
                 "date_end": ndvi_data["end_date"],
                 "composite_count": ndvi_data["composite_count"],
+                "monthly_composite_counts_by_year": composite_counts_by_year,
+                "trend_period": [trend_start_year, trend_end_year],
+                "minimum_monthly_composites_per_year_for_trend": args.ndvi_minimum_monthly_composites_per_year,
                 "available_composite_count": ndvi_data["available_composite_count"],
                 "sampling_strategy": ndvi_data["sampling_strategy"],
                 "grid": {
@@ -274,6 +297,7 @@ def main() -> int:
                     "Annual medians suppress seasonal variation but also hide within-year changes.",
                     "Annual aggregate NDVI uses a fixed spatial pixel panel across the requested years; all-pixel coverage is reported separately to expose missingness.",
                     "Mann-Kendall and Pettitt p-values are not adjusted for temporal autocorrelation.",
+                    f"Trend inference is restricted to {trend_start_year}-{trend_end_year}, the longest contiguous period meeting the monthly composite coverage threshold; 2024-2025 are incomplete in this tile.",
                     "BY corrects the spatial multiple-testing burden only conditional on valid pixel p-values.",
                     "The subset is a local 4 km by 4 km sample window, not a map of all Tajikistan.",
                 ],
