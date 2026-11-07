@@ -55,8 +55,8 @@ def analyze_power_timeseries(
                     "06": "JJA", "07": "JJA", "08": "JJA", "09": "SON", "10": "SON", "11": "SON"}
     for day in paired_dates:
         year, month = day[:4], day[4:6]
-        if len(day) != 8 or not year.isdigit() or not month.isdigit():
-            continue
+        if len(day) != 8 or not year.isdigit() or month not in season_names:
+            raise ValueError(f"Invalid NASA POWER date key: {day!r}")
         annual[year]["temperature"].append(temp[day])
         annual[year]["precipitation"].append(rain[day])
         monthly[month]["temperature"].append(temp[day])
