@@ -16,6 +16,7 @@ class HTMLReportTests(unittest.TestCase):
                     "composite_count": 12,
                     "available_composite_count": 24,
                     "fixed_panel_pixels": 8,
+                    "trend_period": [2003, 2023],
                     "grid": {"nrows": 2, "ncols": 2},
                     "annual_fixed_panel_change_detection": {
                         "pettitt": {"change_point_year": 2018}
@@ -41,6 +42,7 @@ class HTMLReportTests(unittest.TestCase):
             self.assertIn("Select a grid cell", html)
             self.assertIn("temporal autocorrelation", html)
             self.assertIn("2018", html)
+            self.assertIn("2003–2023", html)
             self.assertIn("0.200", html)
             self.assertIn("NDVI vs temperature", html)
             self.assertIn("<svg", html)

@@ -167,7 +167,7 @@ def main() -> int:
                 annual_pixels_core, trend_start_year, trend_end_year
             )
             fixed_by_year = {row["year"]: row for row in fixed_panel_rows}
-            annual_years = sorted(set(annual_buckets) | set(fixed_by_year))
+            annual_years = sorted(set(annual_buckets) | set(fixed_by_year) | set(composite_counts_by_year))
             ndvi_annual_rows = [
                 {
                     "year": year,
@@ -180,6 +180,7 @@ def main() -> int:
                     "fixed_panel_mean": fixed_by_year.get(year, {}).get("fixed_panel_mean"),
                     "fixed_panel_pixels": fixed_by_year.get(year, {}).get("fixed_panel_pixels", 0),
                     "trend_period_included": year in fixed_by_year,
+                    "selected_monthly_composites": composite_counts_by_year.get(year, 0),
                 }
                 for year in annual_years
             ]
@@ -207,7 +208,8 @@ def main() -> int:
                 fields = [
                     "year", "median_of_pixel_annual_medians",
                     "mean_of_pixel_annual_medians", "pixels_with_valid_data",
-                    "fixed_panel_median", "fixed_panel_mean", "fixed_panel_pixels", "trend_period_included",
+                    "fixed_panel_median", "fixed_panel_mean", "fixed_panel_pixels",
+                    "trend_period_included", "selected_monthly_composites",
                 ]
                 writer = csv.DictWriter(csv_file, fieldnames=fields)
                 writer.writeheader()

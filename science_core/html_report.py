@@ -94,7 +94,8 @@ def render_html_report(
     precip_trend = power.get("descriptive_linear_trends", {}).get("annual_precipitation_total", {})
     paired_days = power.get("paired_valid_days", "n/a")
     common_months = cross.get("common_months", "n/a")
-    summary = report.get("summary", {})
+    trend_period = ndvi.get("trend_period", [])
+    trend_period_text = f"{trend_period[0]}–{trend_period[1]}" if len(trend_period) == 2 else "n/a"
     pettitt = ndvi.get("annual_fixed_panel_change_detection", {}).get("pettitt", {})
     change_year = pettitt.get("change_point_year")
     if change_year is None:
@@ -179,6 +180,7 @@ footer{{margin-top:34px;color:var(--muted);font-size:13px}}
 <div class="metric"><strong>{metric(ndvi.get("fixed_panel_pixels"))}</strong><span>Pixels in fixed annual panel</span></div>
 <div class="metric"><strong>{metric(paired_days)}</strong><span>Paired NASA POWER days</span></div>
 <div class="metric"><strong>{metric(common_months)}</strong><span>Common monthly observations</span></div>
+<div class="metric"><strong>{html.escape(trend_period_text)}</strong><span>MODIS core trend period</span></div>
 <div class="metric"><strong>{html.escape(str(change_year))}</strong><span>Pettitt candidate change year</span></div>
 </div>
 <h2>Spatial NDVI trend map</h2>
