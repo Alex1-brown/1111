@@ -22,6 +22,7 @@ from .change_point import pettitt_test
 from .anomaly_analysis import robust_anomalies
 from .cross_source_analysis import analyze_monthly_cross_source
 from .visualization import render_line_chart
+from .html_report import render_html_report
 
 
 def main() -> int:
@@ -87,6 +88,7 @@ def main() -> int:
     ndvi_error = None
     ndvi_data = None
     ndvi_annual_rows = []
+    pixel_trends = []
     if not args.skip_ndvi:
         try:
             print("Fetching NASA MOD13Q1.061 NDVI COGs from Microsoft Planetary Computer...", flush=True)
@@ -416,6 +418,14 @@ def main() -> int:
             "Monthly NDVI-climate associations are exploratory and do not establish causation or validate either source.",
         ],
     }
+    html_path = args.output / "report.html"
+    report["html_report"] = str(html_path)
+    if ndvi_summary.get("status") == "success":
+        ndvi_summary["artifacts"]["html_report"] = str(html_path)
+    html_path.write_text(
+        render_html_report(report, pixel_trends, chart_paths),
+        encoding="utf-8",
+    )
     report_path = args.output / "report.json"
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     for filename, rows in (
@@ -447,6 +457,7 @@ def main() -> int:
         "cross_source_anomaly_correlations": cross_source_summary.get("anomaly_correlations"),
         "chart_files": len(chart_paths),
         "total_imagery_megabytes": round(total_image_bytes / (1024 * 1024), 2),
+        "html_report": str(html_path),
     }, indent=2))
     if not args.skip_gibs and len(image_records) < args.minimum_images:
         print(f"ERROR: only {len(image_records)} valid images; {args.minimum_images} required.", flush=True)

@@ -68,7 +68,7 @@ Important limits: NDVI is a vegetation indicator, not a direct measurement of cl
 
 ## SVG visualization layer
 
-The CLI exports labelled SVG line charts for annual temperature, precipitation and MODIS NDVI under `artifacts/charts/`.
+The CLI exports labelled SVG line charts for annual temperature, precipitation, NDVI and NDVI spatial coverage under `artifacts/charts/`, plus a self-contained offline `artifacts/report.html` with a clickable trend grid and cross-source correlation summary.
 
 
 ## Cross-source monthly comparison
