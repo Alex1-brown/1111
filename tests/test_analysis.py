@@ -4,6 +4,7 @@ from science_core.analysis import (
     analyze_power_payload, compare_rgb_pixels, monthly_means, summarize, valid_values,
 )
 from science_core.imagery_series import sample_dates, summarize_sequence
+from science_core.statistical_analysis import analyze_power_timeseries
 from science_core.pipeline import PipelineError, run_pipeline
 
 
@@ -81,6 +82,26 @@ class AnalysisTests(unittest.TestCase):
         self.assertEqual(result["mean_changed_pixel_percent"], 20)
         self.assertEqual(result["median_changed_pixel_percent"], 20)
         self.assertEqual(result["mean_absolute_rgb_difference"], 10)
+
+    def test_power_timeseries_annual_monthly_and_trend(self):
+        temperature = [
+            ("20200101", 10), ("20210101", 11), ("20220101", 12),
+            ("20200102", 20), ("20210102", 21), ("20220102", 22),
+        ]
+        precipitation = [
+            ("20200101", 1), ("20210101", 2), ("20220101", 3),
+            ("20200102", 0), ("20210102", 0), ("20220102", 0),
+        ]
+        result = analyze_power_timeseries(temperature, precipitation)
+        self.assertEqual(result["paired_valid_days"], 6)
+        self.assertEqual(len(result["annual"]), 3)
+        self.assertAlmostEqual(result["descriptive_linear_trends"]["annual_mean_temperature"]["slope_per_year"], 1.0)
+        self.assertEqual(len(result["monthly_climatology"]), 1)
+        self.assertEqual(result["daily_temperature_precipitation_pearson_r"], None if False else result["daily_temperature_precipitation_pearson_r"])
+
+    def test_power_timeseries_requires_overlapping_dates(self):
+        with self.assertRaises(ValueError):
+            analyze_power_timeseries([("20200101", 1)], [("20200102", 1)])
 
     def test_six_stage_pipeline(self):
         result = run_pipeline(

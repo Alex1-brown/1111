@@ -8,6 +8,8 @@ from pathlib import Path
 from .analysis import analyze_power_payload, compare_rgb_pixels
 from .imagery_series import sample_dates, summarize_sequence
 from .nasa import fetch_gibs_image, fetch_power, utc_timestamp
+from .analysis import valid_values
+from .statistical_analysis import analyze_power_timeseries
 
 
 def main() -> int:
@@ -42,6 +44,11 @@ def main() -> int:
     power_payload, power_source = fetch_power(args.latitude, args.longitude, args.start, args.end)
     (args.output / "nasa_power.json").write_text(json.dumps(power_payload, indent=2), encoding="utf-8")
     metrics = analyze_power_payload(power_payload)
+    parameters = power_payload["properties"]["parameter"]
+    fill_value = float(power_payload["header"].get("fill_value", -999.0))
+    temperature_series, _ = valid_values(parameters["T2M"], fill_value)
+    precipitation_series, _ = valid_values(parameters["PRECTOTCORR"], fill_value)
+    time_series_analysis = analyze_power_timeseries(temperature_series, precipitation_series)
 
     try:
         from PIL import Image
@@ -102,6 +109,7 @@ def main() -> int:
         },
         "power_source_url": power_source,
         "power": metrics,
+        "power_time_series_analysis": time_series_analysis,
         "imagery": {
             "source": "NASA GIBS", "layer": "MODIS_Terra_CorrectedReflectance_TrueColor",
             "bbox_epsg4326": bbox, "images": image_records, "failed_requests": failed_images,
@@ -120,6 +128,18 @@ def main() -> int:
     }
     report_path = args.output / "report.json"
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    import csv
+    for filename, rows in (
+        ("annual_summary.csv", time_series_analysis["annual"]),
+        ("monthly_climatology.csv", time_series_analysis["monthly_climatology"]),
+        ("seasonal_summary.csv", time_series_analysis["meteorological_seasons"]),
+    ):
+        rows = list(rows)
+        if rows:
+            with (args.output / filename).open("w", newline="", encoding="utf-8") as csv_file:
+                writer = csv.DictWriter(csv_file, fieldnames=list(rows[0]))
+                writer.writeheader()
+                writer.writerows(rows)
     print(f"Report saved: {report_path}", flush=True)
     print(json.dumps({
         "temperature_daily_records": metrics["temperature_2m_c"]["count"],
@@ -130,6 +150,9 @@ def main() -> int:
         "minimum_images_required": args.minimum_images,
         "adjacent_image_comparisons": len(comparisons),
         "mean_changed_pixel_percent": image_summary["mean_changed_pixel_percent"],
+        "annual_temperature_trend_c_per_year": time_series_analysis["descriptive_linear_trends"]["annual_mean_temperature"]["slope_per_year"],
+        "annual_precipitation_trend_mm_per_year": time_series_analysis["descriptive_linear_trends"]["annual_precipitation_total"]["slope_per_year"],
+        "daily_temperature_precipitation_pearson_r": time_series_analysis["daily_temperature_precipitation_pearson_r"],
         "total_imagery_megabytes": round(total_image_bytes / (1024 * 1024), 2),
     }, indent=2))
     if len(image_records) < args.minimum_images:
