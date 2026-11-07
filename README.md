@@ -75,3 +75,13 @@ A separate analysis module aligns monthly MODIS NDVI with NASA POWER 2 m air tem
 
 
 The default live validation workflow skips NASA GIBS true-colour browse imagery because it is not calibrated science data and its repeated image requests add latency without improving the quantitative trend analysis. GIBS remains available as an optional exploratory layer when running the CLI without `--skip-gibs`. The core live run prioritizes quality-screened MOD13Q1 NDVI, NASA POWER time series, cross-source monthly analysis, spatial trend GeoJSON, CSV, JSON and SVG charts.
+
+
+## Primary sources and specifications
+
+- NASA Space Apps 2026 challenge: https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/
+- NASA MODIS/Terra MOD13Q1 Version 6.1 product and citation: https://doi.org/10.5067/MODIS/MOD13Q1.061
+- ORNL DAAC MODIS Global Subset Web Service: https://modis.ornl.gov/data/modis_webservice.html
+- NASA POWER Daily API documentation: https://power.larc.nasa.gov/docs/services/api/temporal/daily/
+
+The project records product version, source, DOI, units, QA policy and analysis settings in its generated report. If a source response does not match the expected product version or schema, the pipeline fails that data stage rather than silently mixing incompatible records.
