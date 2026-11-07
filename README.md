@@ -66,7 +66,7 @@ Important limits: NDVI is a vegetation indicator, not a direct measurement of cl
 
 ## SVG visualization layer
 
-A dependency-free SVG line-chart renderer is available in `science_core/visualization.py`. It produces labelled vector charts and handles empty/invalid series explicitly. CLI export wiring is the next integration step.
+The CLI exports labelled SVG line charts for annual temperature, precipitation and MODIS NDVI under `artifacts/charts/`.
 
 
 ## Cross-source monthly comparison

@@ -17,6 +17,8 @@ from .ornl_modis import fetch_mod13q1
 from .spatial_analysis import (
     annual_pixel_medians, analyze_pixel_trends, sinusoidal_pixel_center,
 )
+from .cross_source_analysis import analyze_monthly_cross_source
+from .visualization import render_line_chart
 
 
 def main() -> int:
@@ -69,7 +71,10 @@ def main() -> int:
     time_series_analysis = analyze_power_timeseries(temperature_series, precipitation_series)
 
     ndvi_summary = {"status": "skipped"}
+    cross_source_summary = {"status": "unavailable"}
     ndvi_error = None
+    ndvi_data = None
+    ndvi_annual_rows = []
     if not args.skip_ndvi:
         try:
             print("Fetching quantitative MODIS NDVI and pixel-quality data from ORNL DAAC...", flush=True)
@@ -124,7 +129,7 @@ def main() -> int:
             for series in annual_pixels.values():
                 for year, value in series:
                     annual_buckets[year].append(value)
-            annual_rows = [
+            ndvi_annual_rows = [
                 {
                     "year": year,
                     "median_of_pixel_annual_medians": median(values),
@@ -141,7 +146,35 @@ def main() -> int:
                 ]
                 writer = csv.DictWriter(csv_file, fieldnames=fields)
                 writer.writeheader()
-                writer.writerows(annual_rows)
+                writer.writerows(ndvi_annual_rows)
+
+            try:
+                common_start_year = max(int(args.start[:4]), int(args.ndvi_start[:4]))
+                common_end_year = min(int(args.end[:4]), int(args.ndvi_end[:4]))
+                cross_source = analyze_monthly_cross_source(
+                    temperature_series, precipitation_series,
+                    ndvi_data["valid_observations"],
+                    start_year=common_start_year, end_year=common_end_year,
+                )
+                cross_path = ndvi_dir / "monthly_cross_source.csv"
+                cross_fields = [
+                    "year", "month", "ndvi_median", "temperature_mean_c",
+                    "precipitation_total_mm", "ndvi_observations",
+                    "temperature_daily_count", "precipitation_daily_count",
+                    "ndvi_anomaly", "temperature_anomaly_c", "precipitation_anomaly_mm",
+                ]
+                with cross_path.open("w", newline="", encoding="utf-8") as csv_file:
+                    writer = csv.DictWriter(csv_file, fieldnames=cross_fields)
+                    writer.writeheader()
+                    writer.writerows(cross_source["monthly_rows"])
+                cross_source_summary = {
+                    key: value for key, value in cross_source.items() if key != "monthly_rows"
+                }
+                cross_source_summary["status"] = "success"
+                cross_source_summary["artifact_csv"] = str(cross_path)
+            except Exception as exc:
+                cross_source_summary = {"status": "failed", "error": str(exc)}
+                print(f"Cross-source monthly analysis failed: {exc}", flush=True)
 
             ndvi_summary = {
                 "status": "success",
@@ -176,6 +209,7 @@ def main() -> int:
                     "annual_summary_csv": str(annual_path),
                     "spatial_trends_csv": str(trend_path),
                     "spatial_trends_geojson": str(geojson_path),
+                    "monthly_cross_source_csv": cross_source_summary.get("artifact_csv"),
                 },
                 "geolocation_warning": (
                     "GeoJSON pixel centers are approximate: the requested center is treated as the "
@@ -248,6 +282,30 @@ def main() -> int:
         previous_pixels = current_pixels
 
     image_summary = summarize_sequence(comparisons)
+    charts_dir = args.output / "charts"
+    charts_dir.mkdir(parents=True, exist_ok=True)
+    chart_paths = {}
+    annual_power_rows = time_series_analysis["annual"]
+    for chart_name, title, y_label, key in (
+        ("annual_temperature.svg", "Annual mean 2 m air temperature", "Temperature (°C)", "mean_temperature_c"),
+        ("annual_precipitation.svg", "Annual corrected precipitation total", "Precipitation (mm)", "precipitation_total_mm"),
+    ):
+        chart_path = charts_dir / chart_name
+        chart_path.write_text(render_line_chart(
+            [(str(row["year"]), float(row[key])) for row in annual_power_rows],
+            title, y_label,
+        ), encoding="utf-8")
+        chart_paths[chart_name] = str(chart_path)
+    if ndvi_summary.get("status") == "success":
+        ndvi_chart_path = charts_dir / "annual_ndvi.svg"
+        ndvi_chart_path.write_text(render_line_chart(
+            [(str(row["year"]), float(row["median_of_pixel_annual_medians"]))
+             for row in ndvi_annual_rows],
+            "Annual median MODIS NDVI across sampled pixels", "NDVI",
+        ), encoding="utf-8")
+        chart_paths["annual_ndvi.svg"] = str(ndvi_chart_path)
+        ndvi_summary["artifacts"]["annual_ndvi_svg"] = str(ndvi_chart_path)
+
     report = {
         "generated_at_utc": utc_timestamp(),
         "dataset_scope": {
@@ -263,6 +321,8 @@ def main() -> int:
         "power": metrics,
         "power_time_series_analysis": time_series_analysis,
         "modis_ndvi": ndvi_summary,
+        "cross_source_monthly_analysis": cross_source_summary,
+        "charts": chart_paths,
         "imagery": {
             "source": "NASA GIBS", "layer": "MODIS_Terra_CorrectedReflectance_TrueColor",
             "bbox_epsg4326": bbox, "images": image_records, "failed_requests": failed_images,
@@ -278,6 +338,7 @@ def main() -> int:
             "RGB differences are screening indicators only; scientific land-cover change needs validated products and methods.",
             "Five years of data alone are not sufficient to establish every long-term climate trend.",
             "MODIS NDVI trends are local vegetation indicators and do not directly validate air temperature or precipitation.",
+            "Monthly NDVI-climate associations are exploratory and do not establish causation or validate either source.",
         ],
     }
     report_path = args.output / "report.json"
@@ -306,6 +367,10 @@ def main() -> int:
         "annual_temperature_trend_c_per_year": time_series_analysis["descriptive_linear_trends"]["annual_mean_temperature"]["slope_per_year"],
         "annual_precipitation_trend_mm_per_year": time_series_analysis["descriptive_linear_trends"]["annual_precipitation_total"]["slope_per_year"],
         "daily_temperature_precipitation_pearson_r": time_series_analysis["daily_temperature_precipitation_pearson_r"],
+        "modis_ndvi_status": ndvi_summary.get("status"),
+        "cross_source_common_months": cross_source_summary.get("common_months"),
+        "cross_source_anomaly_correlations": cross_source_summary.get("anomaly_correlations"),
+        "chart_files": len(chart_paths),
         "total_imagery_megabytes": round(total_image_bytes / (1024 * 1024), 2),
     }, indent=2))
     if len(image_records) < args.minimum_images:
