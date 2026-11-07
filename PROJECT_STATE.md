@@ -8,26 +8,26 @@ Default branch: main
 - NASA POWER daily point API: default 2021-01-01 through 2025-12-31; parameters T2M and PRECTOTCORR.
 - NASA GIBS MODIS Terra true-colour: request 60 evenly sampled dates across the same five-year period, 512 × 512 pixels each; require at least 50 valid images for a successful run.
 - Failed image requests are recorded in report.json; each request retries up to three times. Only valid PNG images with the expected dimensions count.
-- Raw imagery is not committed to Git; live artifacts are uploaded for 14 days.
+- A dedicated GitHub Actions workflow downloads the live datasets and uploads generated artifacts for 14 days. Raw imagery is not committed to Git.
+- The live workflow must complete before claiming any image count or live NASA retrieval success.
 
 ## Architecture
-Acquire → Validate → Clean → Process → Verify → Visualize is a reusable software workflow, not a physical law.
+Acquire → Validate → Clean → Process → Verify → Visualize is a reusable software workflow, not a physical law. Domain-specific science, units, assumptions, uncertainty and independent verification remain necessary.
 
-- science_core/analysis.py: POWER payload summaries, monthly means and RGB browse-image comparisons.
-- science_core/statistical_analysis.py: paired-date annual/monthly/seasonal POWER summaries, descriptive OLS slopes and daily Pearson correlation.
+- science_core/principles.py: workflow labels.
+- science_core/pipeline.py: generic six-stage orchestrator.
+- science_core/analysis.py: POWER payload summaries and RGB comparison.
 - science_core/nasa.py: NASA POWER and GIBS retrieval with bounded retries.
 - science_core/imagery_series.py: deterministic image date sampling and sequence summary.
-- science_core/cli.py: live retrieval, analysis, JSON report and CSV export.
-- tests/test_analysis.py: offline unit tests.
+- science_core/cli.py: live data retrieval, per-image failure recording and report generation.
+- tests/test_analysis.py: offline tests for analysis, date sampling, sequence summaries and pipeline behavior.
+- .github/workflows/nasa-live-validation.yml: live retrieval and artifact upload.
 
 ## Verification status
-- Previous live NASA run (2026-11-07): 1,826 daily records for each POWER parameter; 59/60 valid GIBS true-colour images; 58 adjacent RGB comparisons.
-- New statistical-analysis code is committed. The Python offline test workflow has been triggered by the commit; check its result before treating the new code as verified.
-- A fresh live run is required to generate actual annual/monthly/seasonal results and CSV artifacts from NASA POWER using the new code.
+Offline unit tests passed on the previous code revision. The retry/failure-tolerant live downloader and dedicated workflow are newly added and need CI execution. No live NASA image count is verified until the live workflow produces its report and artifacts.
 
-## Scientific limitations and next milestone
-- NASA POWER gridded analysis/reanalysis-derived values are not direct local weather-station observations.
-- GIBS true-colour RGB browse images are not calibrated reflectance or land-cover classification.
-- A real quantitative satellite comparison requires MODIS/Terra MOD11A1.061 LST data, quality screening, spatial/temporal aggregation and a careful distinction between land-surface temperature and 2 m air temperature.
-- Five years alone do not establish a robust long-term climate trend. Slopes and correlations in this project are exploratory and do not establish causation.
-- Do not claim satellite accuracy, environmental change or climate attribution without independent validation and uncertainty analysis.
+## Scientific limitations
+NASA POWER is gridded analysis/reanalysis-derived data, not a local station observation. GIBS true-colour RGB is browse imagery, not calibrated reflectance or land-cover classification. Clouds, atmosphere, illumination and compositing affect RGB differences. Five years alone do not establish a long-term climate trend.
+
+## Efficient development
+Batch related edits into one commit, run offline tests first, use Actions only at meaningful checkpoints, do not commit raw imagery, preserve source metadata, and never commit credentials or personal data.
