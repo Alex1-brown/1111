@@ -122,7 +122,8 @@ def main() -> int:
             trend_fields = [
                 "row", "column", "years", "first_year", "last_year",
                 "sen_slope_ndvi_per_year", "kendall_tau", "p_value",
-                "trend_method", "q_value_by", "significant_fdr_05",
+                "trend_method", "q_value_by",
+                "by_q_le_0_05_temporal_uncorrected", "serial_correlation_adjusted",
             ]
             trend_path = ndvi_dir / "ndvi_spatial_trends.csv"
             with trend_path.open("w", newline="", encoding="utf-8") as csv_file:
@@ -227,6 +228,8 @@ def main() -> int:
                 "date_start": ndvi_data["start_date"],
                 "date_end": ndvi_data["end_date"],
                 "composite_count": ndvi_data["composite_count"],
+                "available_composite_count": ndvi_data["available_composite_count"],
+                "sampling_strategy": ndvi_data["sampling_strategy"],
                 "grid": {
                     key: value for key, value in grid_meta.items() if key != "header"
                 },
@@ -257,7 +260,9 @@ def main() -> int:
                 "scientific_limitations": [
                     "MOD13Q1 is a 16-day best-pixel composite, not a daily observation.",
                     "Only SummaryQA/pixel-reliability code 0 is accepted; this strict filter reduces coverage.",
+                    "One 16-day composite per calendar month is selected nearest to mid-month; this monthly sampling suppresses some within-month variability.",
                     "Annual medians suppress seasonal variation but also hide within-year changes.",
+                    "Annual aggregate NDVI uses a fixed spatial pixel panel across the requested years; all-pixel coverage is reported separately to expose missingness."
                     "Mann-Kendall and Pettitt p-values are not adjusted for temporal autocorrelation.",
                     "Annual aggregate NDVI is also reported for a fixed set of pixels present in every year; this reduces bias from changing spatial coverage.",
                     "BY corrects the spatial multiple-testing burden only conditional on valid pixel p-values.",
