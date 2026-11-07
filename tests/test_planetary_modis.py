@@ -26,8 +26,9 @@ class FakeHTTPResponse:
 
 
 class FakeRaster:
-    def __init__(self, asset):
+    def __init__(self, asset, transform_shift=0):
         self.asset = asset
+        self.transform_shift = transform_shift
         self.crs = rasterio.crs.CRS.from_epsg(4326)
         self.res = (250.0, 250.0)
         self.width = 100
@@ -55,7 +56,9 @@ class FakeRaster:
         return arr
 
     def window_transform(self, window):
-        return Affine.translation(window.col_off, window.row_off) * Affine.scale(0.001, -0.001)
+        return Affine.translation(
+            window.col_off + self.transform_shift, window.row_off
+        ) * Affine.scale(0.001, -0.001)
 
 
 class PlanetaryModisTests(unittest.TestCase):
@@ -131,6 +134,51 @@ class PlanetaryModisTests(unittest.TestCase):
             token_requests,
             ["https://planetarycomputer.microsoft.com/api/sas/v1/token/modiseuwest/modis-061-cogs"],
         )
+
+    def test_rejects_pixel_grid_transform_shift_between_dates(self):
+        first = {
+            "id": "MOD13Q1.A2020049.h23v05.061.2020060000000",
+            "type": "Feature",
+            "collection": "modis-13Q1-061",
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[[68, 38], [69, 38], [69, 39], [68, 39], [68, 38]]],
+            },
+            "properties": {
+                "platform": "terra",
+                "start_datetime": "2020-02-18T00:00:00Z",
+                "end_datetime": "2020-03-05T23:59:59Z",
+                "modis:tile-id": "51021004",
+            },
+            "assets": {
+                NDVI_ASSET: {"href": "https://modiseuwest.blob.core.windows.net/modis-061-cogs/ndvi.tif"},
+                QUALITY_ASSET: {"href": "https://modiseuwest.blob.core.windows.net/modis-061-cogs/qa.tif"},
+            },
+        }
+        second = json.loads(json.dumps(first))
+        second["id"] = "MOD13Q1.A2020065.h23v05.061.2020070000000"
+        second["properties"]["start_datetime"] = "2020-03-05T00:00:00Z"
+        second["properties"]["end_datetime"] = "2020-03-21T23:59:59Z"
+
+        def http_opener(request, timeout=90):
+            if "/token/" in request.full_url:
+                return FakeHTTPResponse({"token": "se=abc&sig=xyz"})
+            return FakeHTTPResponse({"features": [first, second], "links": []})
+
+        raster_calls = 0
+        def raster_opener(url):
+            nonlocal raster_calls
+            raster_calls += 1
+            # Each date opens NDVI then QA; both bands share the same shifted
+            # affine transform, but the second date is deliberately misaligned.
+            shift = 0 if raster_calls <= 2 else 1
+            return FakeRaster("ndvi" if "ndvi.tif" in url else "qa", shift)
+
+        with self.assertRaisesRegex(PlanetaryModisError, "affine transform changed"):
+            fetch_mod13q1(
+                38.5, 68.5, "2020-01-01", "2020-12-31", 2,
+                opener=http_opener, raster_opener=raster_opener,
+            )
 
     def test_rejects_empty_stac_search(self):
         def http_opener(request, timeout=90):

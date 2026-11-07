@@ -15,7 +15,7 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 
 - NASA POWER daily point data: T2M and PRECTOTCORR.
 - NASA MODIS/Terra MOD13Q1.061 NDVI and pixel-reliability COGs through Microsoft Planetary Computer STAC collection `modis-13Q1-061`.
-- The MODIS adapter selects one 16-day composite per calendar month, nearest to day 15; validates item IDs/version 061; obtains SAS tokens for the exact Azure storage account/container; reads small COG windows with Rasterio; and derives pixel coordinates from the COG affine transform and CRS.
+- The MODIS adapter selects one 16-day composite per calendar month, nearest to day 15; validates item IDs/version 061; obtains SAS tokens for the exact Azure storage account/container; reads small COG windows with Rasterio; and derives pixel coordinates from the COG affine transform and CRS. It now rejects any shape, CRS, or affine-transform mismatch across dates before combining pixel time series.
 - Only MODIS pixel-reliability code 0 enters NDVI analysis.
 - Annual pixel medians require at least 3 quality-screened monthly composites per pixel-year.
 - The pipeline automatically selects the longest contiguous trend period with at least 11 monthly composites/year. The current data snapshot at this location yields a core period of 2003-2023. Incomplete edge years 2001-2002 and 2024-2025 are excluded from long-term trend inference.
@@ -97,7 +97,8 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 ## Immediate next steps
 
 1. Inspect the successful run #21 artifact and offline HTML report; confirm the 2003-2023 annual-trend core period and edge-year coverage.
-2. Keep the cross-source comparison period tied to actual POWER/NDVI date overlap, not the annual-trend core period; only months present in all three sources enter the comparison.
+2. Keep the cross-source comparison period tied to actual POWER/NDVI date overlap, not the annual-trend core period; only months present in all three sources enter the comparison. This is implemented and covered by an offline regression test.
+3. Enforce identical MODIS subset affine transforms across composite dates before treating pixel indices as a time series; a regression test now rejects shifted grids.
 3. Review annual CSV, per-pixel trend CSV, GeoJSON, coverage chart and cross-source CSV before presenting numerical findings.
 4. Next scientific upgrade: temporal-autocorrelation-aware trend inference or a carefully validated block-bootstrap method.
 5. Prepare a short reproducible demo and final hackathon submission. Avoid further live runs unless a material scientific change is needed.

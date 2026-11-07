@@ -311,14 +311,14 @@ def fetch_mod13q1(
                     raise PlanetaryModisError(f"NDVI/QA COG window shapes differ for {item_id}.")
                 if ndvi_ds.crs != qa_ds.crs or ndvi_ds.transform != qa_ds.transform:
                     raise PlanetaryModisError(f"NDVI/QA COG georeferencing differs for {item_id}.")
+                current_window_transform = list(ndvi_ds.window_transform(window))[:6]
                 if grid is None:
-                    window_transform = ndvi_ds.window_transform(window)
                     grid = {
                         "nrows": int(ndvi_array.shape[0]),
                         "ncols": int(ndvi_array.shape[1]),
                         "cellsize_m": float(abs(xres)),
                         "crs": str(ndvi_ds.crs),
-                        "window_transform": list(window_transform)[:6],
+                        "window_transform": current_window_transform,
                         "center_row": int(half_rows),
                         "center_column": int(half_cols),
                         "requested_latitude": latitude,
@@ -328,8 +328,19 @@ def fetch_mod13q1(
                     int(ndvi_array.shape[0]) != int(grid["nrows"])
                     or int(ndvi_array.shape[1]) != int(grid["ncols"])
                     or str(ndvi_ds.crs) != str(grid["crs"])
+                    or len(current_window_transform) != len(grid["window_transform"])
+                    or any(
+                        abs(float(actual) - float(expected)) > 1e-8
+                        for actual, expected in zip(
+                            current_window_transform, grid["window_transform"]
+                        )
+                    )
                 ):
-                    raise PlanetaryModisError("MODIS subset grid changed between composite dates.")
+                    raise PlanetaryModisError(
+                        "MODIS subset grid shape, CRS, or affine transform changed "
+                        f"between composite dates ({item_id}); refusing to combine "
+                        "non-aligned pixels."
+                    )
 
                 ndvi_values = ndvi_array.tolist()
                 qa_values = qa_array.tolist()
