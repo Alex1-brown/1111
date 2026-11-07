@@ -262,9 +262,8 @@ def main() -> int:
                     "Only SummaryQA/pixel-reliability code 0 is accepted; this strict filter reduces coverage.",
                     "One 16-day composite per calendar month is selected nearest to mid-month; this monthly sampling suppresses some within-month variability.",
                     "Annual medians suppress seasonal variation but also hide within-year changes.",
-                    "Annual aggregate NDVI uses a fixed spatial pixel panel across the requested years; all-pixel coverage is reported separately to expose missingness."
+                    "Annual aggregate NDVI uses a fixed spatial pixel panel across the requested years; all-pixel coverage is reported separately to expose missingness.",
                     "Mann-Kendall and Pettitt p-values are not adjusted for temporal autocorrelation.",
-                    "Annual aggregate NDVI is also reported for a fixed set of pixels present in every year; this reduces bias from changing spatial coverage.",
                     "BY corrects the spatial multiple-testing burden only conditional on valid pixel p-values.",
                     "The subset is a local 4 km by 4 km sample window, not a map of all Tajikistan.",
                 ],

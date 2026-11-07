@@ -40,8 +40,8 @@ class SpatialAnalysisTests(unittest.TestCase):
         result = analyze_pixel_trends(data, minimum_years=15)
         self.assertEqual(len(result), 2)
         self.assertAlmostEqual(result[0]["sen_slope_ndvi_per_year"], 0.01)
-        self.assertTrue(result[0]["significant_fdr_05"])
-        self.assertFalse(result[1]["significant_fdr_05"])
+        self.assertTrue(result[0]["by_q_le_0_05_temporal_uncorrected"])
+        self.assertFalse(result[1]["by_q_le_0_05_temporal_uncorrected"])
 
     def test_fixed_panel_uses_only_pixels_with_all_requested_years(self):
         data = {

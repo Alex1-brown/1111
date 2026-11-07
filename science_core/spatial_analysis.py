@@ -96,7 +96,6 @@ def analyze_pixel_trends(
     for item, q_value in zip(provisional, q_values):
         item["q_value_by"] = q_value
         item["by_q_le_0_05_temporal_uncorrected"] = q_value is not None and q_value <= 0.05
-        item["significant_fdr_05"] = item["by_q_le_0_05_temporal_uncorrected"]
         item["serial_correlation_adjusted"] = False
     return provisional
 
