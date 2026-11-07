@@ -62,3 +62,8 @@ The live CLI now retrieves MODIS/Terra MOD13Q1 NDVI and pixel-reliability data t
 Default NDVI period: 2001-01-01 through 2025-12-31; local subset radius: 2 km around the POWER reference coordinate (approximately 4 × 4 km). The ORNL DAAC service documents a maximum of ten composite dates per subset request. The exact product version returned by the API is recorded in the report.
 
 Important limits: NDVI is a vegetation indicator, not a direct measurement of climate or air temperature. Annual aggregation suppresses seasonality. Temporal autocorrelation is not yet corrected in the Mann-Kendall p-values, and the approximate pixel geolocation must be checked against source metadata before high-precision mapping. A spatially significant trend is not automatically a causal explanation.
+
+
+## SVG visualization layer
+
+A dependency-free SVG line-chart renderer is available in `science_core/visualization.py`. It produces labelled vector charts and handles empty/invalid series explicitly. CLI export wiring is the next integration step.
