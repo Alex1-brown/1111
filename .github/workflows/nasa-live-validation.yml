@@ -1,11 +1,7 @@
 name: NASA live data collection
 
-# Temporary one-time push trigger to verify the final integrated report; manual thereafter.
+# Live NASA data collection is manual to avoid consuming Actions quota on code-only commits.
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/nasa-live-validation.yml"
   workflow_dispatch:
 
 permissions:
