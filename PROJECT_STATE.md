@@ -7,7 +7,17 @@ Default branch: main
 ## Purpose
 Build a reproducible, modular scientific-data toolkit for the NASA Space Apps Challenge. Keep the core independent from the user interface and from any single challenge dataset.
 
+## Canonical scientific workflow
+The project uses this repeatable architecture:
+**Acquire → Validate → Clean → Process → Verify → Visualize**
+(Russian: **Получить данные → Проверить данные → Очистить данные → Обработать данные → Проверить результат → Визуализировать результат**).
+
+This is a workflow pattern, not a universal equation like E=mc² and not a physical law. It organizes data handling; each scientific domain still requires its own validated equations, units, assumptions, uncertainty estimates, and interpretation.
+
+The canonical labels are defined in `science_core/principles.py`.
+
 ## Current implementation
+- `science_core/principles.py`: canonical six-stage workflow labels in Russian and English.
 - `science_core/analysis.py`: pure-Python data validation, summaries, monthly means, RGB image comparison, and NASA POWER payload analysis.
 - `science_core/nasa.py`: URL construction and retrieval helpers for NASA POWER and NASA GIBS MODIS true-colour imagery.
 - `science_core/cli.py`: command-line data collection and report generation.
@@ -18,7 +28,7 @@ Build a reproducible, modular scientific-data toolkit for the NASA Space Apps Ch
 ## Verified status
 GitHub Actions run #4, commit `115849438b223a4d2815e386b1b94b411c881086`, completed successfully on 2026-11-07. The job installed dependencies and passed the offline unit-test step.
 
-This confirms the current automated unit tests pass. It does NOT yet prove every live NASA endpoint, every downloaded image, or scientific interpretations are correct.
+This confirms the current automated unit tests pass. It does NOT yet prove every live NASA endpoint, every downloaded image, or scientific interpretations are correct. The newly added principles module is a small constants/documentation module and has not yet been included in a new CI run.
 
 ## Scientific safeguards
 - NASA POWER gridded/reanalysis-style values must not be described as local weather-station observations.
@@ -36,6 +46,7 @@ This confirms the current automated unit tests pass. It does NOT yet prove every
 7. Keep large datasets and generated imagery out of Git history. Store only small examples or metadata; use release artifacts or external authoritative sources for larger outputs.
 8. Never commit API keys, credentials, personal data, or large raw downloads.
 9. Keep this handoff file updated when architecture, verified status, or the next priority changes.
+10. Treat the six-stage workflow as the common project structure, not as a substitute for challenge-specific scientific methods.
 
 ## Next technical priorities
 1. Inspect the current NASA POWER and GIBS retrieval code for robust timeouts, HTTP errors, and clear failure messages.
