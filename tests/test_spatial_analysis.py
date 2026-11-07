@@ -1,0 +1,59 @@
+import unittest
+
+from science_core.spatial_analysis import (
+    annual_pixel_medians, analyze_pixel_trends, benjamini_yekutieli,
+    sinusoidal_pixel_center,
+)
+
+
+class SpatialAnalysisTests(unittest.TestCase):
+    def test_by_adjustment_preserves_order_and_missing(self):
+        result = benjamini_yekutieli([0.01, None, 0.04, 0.03])
+        self.assertIsNone(result[1])
+        self.assertAlmostEqual(result[0], 0.055)
+        self.assertAlmostEqual(result[2], 0.0733333333333)
+        self.assertAlmostEqual(result[3], 0.0733333333333)
+
+    def test_by_adjustment_rejects_invalid_p_values(self):
+        with self.assertRaises(ValueError):
+            benjamini_yekutieli([1.1])
+
+    def test_annual_medians_filter_fill_and_out_of_range(self):
+        records = [
+            (0, 0, "20200101", 0.2),
+            (0, 0, "20200701", 0.4),
+            (0, 0, "20210101", 0.3),
+            (0, 0, "20220101", -3000),
+            (0, 1, "20200101", 1.2),
+        ]
+        result = annual_pixel_medians(records)
+        self.assertEqual([year for year, _ in result[(0, 0)]], [2020, 2021])
+        self.assertAlmostEqual(result[(0, 0)][0][1], 0.3)
+        self.assertAlmostEqual(result[(0, 0)][1][1], 0.3)
+        self.assertNotIn((0, 1), result)
+
+    def test_pixel_trends_and_fdr(self):
+        data = {
+            (0, 0): [(year, 0.2 + 0.01 * (year - 2000)) for year in range(2000, 2025)],
+            (0, 1): [(year, 0.5) for year in range(2000, 2025)],
+        }
+        result = analyze_pixel_trends(data, minimum_years=15)
+        self.assertEqual(len(result), 2)
+        self.assertAlmostEqual(result[0]["sen_slope_ndvi_per_year"], 0.01)
+        self.assertTrue(result[0]["significant_fdr_05"])
+        self.assertFalse(result[1]["significant_fdr_05"])
+
+    def test_sinusoidal_grid_center_matches_requested_center(self):
+        lon, lat = sinusoidal_pixel_center(38.5598, 68.787, 4, 4, 9, 9, 231.656)
+        self.assertAlmostEqual(lon, 68.787, places=10)
+        self.assertAlmostEqual(lat, 38.5598, places=10)
+
+    def test_sinusoidal_grid_adjacent_pixel_moves(self):
+        center = sinusoidal_pixel_center(38.5598, 68.787, 4, 4, 9, 9, 231.656)
+        east = sinusoidal_pixel_center(38.5598, 68.787, 4, 5, 9, 9, 231.656)
+        self.assertGreater(east[0], center[0])
+        self.assertAlmostEqual(east[1], center[1], places=5)
+
+
+if __name__ == "__main__":
+    unittest.main()

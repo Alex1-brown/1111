@@ -48,3 +48,8 @@ The current MODIS Terra true-colour GIBS PNGs are browse imagery and cannot be u
 The report now supplements descriptive OLS slopes with Mann-Kendall trend statistics and Sen's median slope for annual temperature and annual precipitation, plus Seasonal Mann-Kendall statistics on year-month aggregates (monthly means for temperature and monthly totals for precipitation). The output includes Kendall S, Kendall tau, Z, two-sided p-value, Sen slope per year and method metadata.
 
 For annual series with 3–8 observations, the implementation uses an exact permutation p-value; larger annual series and seasonal tests use a two-sided normal approximation. Neither currently corrects for serial correlation. Five annual observations provide weak evidence, and seasonal tests need dependence diagnostics and a longer record before strong inference. Spatial multiple-testing correction is not yet implemented.
+
+ 
+## Spatial trend statistics
+
+The spatial analysis module supports per-pixel annual NDVI medians, per-pixel Mann-Kendall/Sen trend estimates, and Benjamini-Yekutieli adjusted q-values across pixels. BY is used as a conservative false-discovery-rate procedure under arbitrary dependence. The module also contains an explicitly approximate MODIS sinusoidal row/column geolocation helper; its center-pixel convention must be verified against each source response before map coordinates are treated as precise. This module is a tested analysis layer; the live MODIS ingestion adapter and full spatial map pipeline are separate pending work.
