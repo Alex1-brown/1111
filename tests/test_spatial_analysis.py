@@ -2,7 +2,7 @@ import unittest
 
 from science_core.spatial_analysis import (
     annual_pixel_medians, analyze_pixel_trends, benjamini_yekutieli,
-    sinusoidal_pixel_center, sinusoidal_pixel_center_from_origin,
+    sinusoidal_pixel_center, sinusoidal_pixel_center_from_origin, summarize_fixed_annual_panel,
 )
 
 
@@ -42,6 +42,17 @@ class SpatialAnalysisTests(unittest.TestCase):
         self.assertAlmostEqual(result[0]["sen_slope_ndvi_per_year"], 0.01)
         self.assertTrue(result[0]["significant_fdr_05"])
         self.assertFalse(result[1]["significant_fdr_05"])
+
+    def test_fixed_panel_uses_only_pixels_with_all_requested_years(self):
+        data = {
+            (0, 0): [(year, year / 100.0) for year in range(2001, 2026)],
+            (0, 1): [(year, year / 100.0) for year in range(2001, 2025)],
+            (0, 2): [(year, year / 100.0) for year in range(2002, 2026)],
+        }
+        rows, count = summarize_fixed_annual_panel(data, 2001, 2025)
+        self.assertEqual(count, 1)
+        self.assertTrue(all(row["fixed_panel_pixels"] == 1 for row in rows))
+        self.assertAlmostEqual(rows[0]["fixed_panel_median"], 20.01)
 
     def test_sinusoidal_grid_center_matches_requested_center(self):
         lon, lat = sinusoidal_pixel_center(38.5598, 68.787, 4, 4, 9, 9, 231.656)

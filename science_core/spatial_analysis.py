@@ -95,7 +95,9 @@ def analyze_pixel_trends(
     q_values = benjamini_yekutieli([item["p_value"] for item in provisional])
     for item, q_value in zip(provisional, q_values):
         item["q_value_by"] = q_value
-        item["significant_fdr_05"] = q_value is not None and q_value <= 0.05
+        item["by_q_le_0_05_temporal_uncorrected"] = q_value is not None and q_value <= 0.05
+        item["significant_fdr_05"] = item["by_q_le_0_05_temporal_uncorrected"]
+        item["serial_correlation_adjusted"] = False
     return provisional
 
 
@@ -160,3 +162,36 @@ def sinusoidal_pixel_center_from_origin(
         raise ValueError("Cannot invert sinusoidal coordinates near the poles.")
     longitude_rad = x / (radius * cos(latitude_rad))
     return longitude_rad * 180.0 / pi, latitude_rad * 180.0 / pi
+
+
+def summarize_fixed_annual_panel(
+    annual_values: Mapping[tuple[int, int], list[tuple[int, float]]],
+    start_year: int,
+    end_year: int,
+) -> tuple[list[dict[str, float | int | None]], int]:
+    """Summarize only pixels with valid annual medians in every requested year.
+
+    This fixed spatial cohort prevents annual aggregate changes from being
+    driven merely by a changing number/location of pixels with valid data.
+    """
+    if start_year > end_year:
+        raise ValueError("start_year must not be after end_year.")
+    years = list(range(start_year, end_year + 1))
+    pixel_series = {
+        pixel: {int(year): float(value) for year, value in series}
+        for pixel, series in annual_values.items()
+    }
+    fixed_pixels = [
+        pixel for pixel, values in pixel_series.items()
+        if all(year in values for year in years)
+    ]
+    rows = []
+    for year in years:
+        values = [pixel_series[pixel][year] for pixel in fixed_pixels]
+        rows.append({
+            "year": year,
+            "fixed_panel_median": float(median(values)) if values else None,
+            "fixed_panel_mean": float(sum(values) / len(values)) if values else None,
+            "fixed_panel_pixels": len(values),
+        })
+    return rows, len(fixed_pixels)

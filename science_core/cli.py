@@ -15,8 +15,11 @@ from .analysis import valid_values
 from .statistical_analysis import analyze_power_timeseries
 from .planetary_modis import fetch_mod13q1, pixel_center_lonlat
 from .spatial_analysis import (
-    annual_pixel_medians, analyze_pixel_trends,
+    annual_pixel_medians, analyze_pixel_trends, summarize_fixed_annual_panel,
 )
+from .trend_analysis import mann_kendall
+from .change_point import pettitt_test
+from .anomaly_analysis import robust_anomalies
 from .cross_source_analysis import analyze_monthly_cross_source
 from .visualization import render_line_chart
 
@@ -82,7 +85,7 @@ def main() -> int:
     ndvi_annual_rows = []
     if not args.skip_ndvi:
         try:
-            print("Fetching quantitative MODIS NDVI and pixel-quality data from ORNL DAAC...", flush=True)
+            print("Fetching NASA MOD13Q1.061 NDVI COGs from Microsoft Planetary Computer...", flush=True)
             ndvi_data = fetch_mod13q1(
                 args.latitude, args.longitude,
                 args.ndvi_start, args.ndvi_end, args.ndvi_radius_km,
@@ -131,20 +134,50 @@ def main() -> int:
             for series in annual_pixels.values():
                 for year, value in series:
                     annual_buckets[year].append(value)
+            fixed_panel_rows, fixed_panel_pixel_count = summarize_fixed_annual_panel(
+                annual_pixels, int(args.ndvi_start[:4]), int(args.ndvi_end[:4])
+            )
+            fixed_by_year = {row["year"]: row for row in fixed_panel_rows}
+            annual_years = sorted(set(annual_buckets) | set(fixed_by_year))
             ndvi_annual_rows = [
                 {
                     "year": year,
-                    "median_of_pixel_annual_medians": median(values),
-                    "mean_of_pixel_annual_medians": sum(values) / len(values),
-                    "pixels_with_valid_data": len(values),
+                    "median_of_pixel_annual_medians": median(annual_buckets[year]) if annual_buckets[year] else None,
+                    "mean_of_pixel_annual_medians": (
+                        sum(annual_buckets[year]) / len(annual_buckets[year]) if annual_buckets[year] else None
+                    ),
+                    "pixels_with_valid_data": len(annual_buckets[year]),
+                    "fixed_panel_median": fixed_by_year[year]["fixed_panel_median"],
+                    "fixed_panel_mean": fixed_by_year[year]["fixed_panel_mean"],
+                    "fixed_panel_pixels": fixed_by_year[year]["fixed_panel_pixels"],
                 }
-                for year, values in sorted(annual_buckets.items())
+                for year in annual_years
             ]
+            fixed_ndvi_series = [
+                (int(row["year"]), float(row["fixed_panel_median"]))
+                for row in ndvi_annual_rows if row["fixed_panel_median"] is not None
+            ]
+            ndvi_change_detection = {
+                "fixed_panel_pixels": fixed_panel_pixel_count,
+                "period": [int(args.ndvi_start[:4]), int(args.ndvi_end[:4])],
+                "mann_kendall_sen": mann_kendall(
+                    [(float(year), value) for year, value in fixed_ndvi_series]
+                ),
+                "pettitt": pettitt_test(fixed_ndvi_series),
+                "robust_anomalies": robust_anomalies(
+                    [(str(year), value) for year, value in fixed_ndvi_series]
+                ),
+                "interpretation_caveat": (
+                    "Pettitt and Mann-Kendall p-values do not correct for temporal autocorrelation. "
+                    "The fixed pixel panel prevents changing spatial coverage from driving the aggregate series."
+                ),
+            }
             annual_path = ndvi_dir / "ndvi_annual_summary.csv"
             with annual_path.open("w", newline="", encoding="utf-8") as csv_file:
                 fields = [
                     "year", "median_of_pixel_annual_medians",
                     "mean_of_pixel_annual_medians", "pixels_with_valid_data",
+                    "fixed_panel_median", "fixed_panel_mean", "fixed_panel_pixels",
                 ]
                 writer = csv.DictWriter(csv_file, fieldnames=fields)
                 writer.writeheader()
@@ -203,9 +236,11 @@ def main() -> int:
                 "quality_counts": ndvi_data["quality_counts"],
                 "pixels_with_annual_data": len(annual_pixels),
                 "pixels_with_trend_estimates": len(pixel_trends),
-                "pixels_significant_by_fdr_05": sum(
-                    bool(item["significant_fdr_05"]) for item in pixel_trends
+                "pixels_by_q_le_0_05_temporal_uncorrected": sum(
+                    bool(item["by_q_le_0_05_temporal_uncorrected"]) for item in pixel_trends
                 ),
+                "fixed_panel_pixels": fixed_panel_pixel_count,
+                "annual_fixed_panel_change_detection": ndvi_change_detection,
                 "multiple_testing_method": "Benjamini-Yekutieli",
                 "minimum_years_per_pixel": args.ndvi_minimum_years,
                 "artifacts": {
@@ -223,7 +258,8 @@ def main() -> int:
                     "MOD13Q1 is a 16-day best-pixel composite, not a daily observation.",
                     "Only SummaryQA/pixel-reliability code 0 is accepted; this strict filter reduces coverage.",
                     "Annual medians suppress seasonal variation but also hide within-year changes.",
-                    "Mann-Kendall p-values are not adjusted for temporal autocorrelation.",
+                    "Mann-Kendall and Pettitt p-values are not adjusted for temporal autocorrelation.",
+                    "Annual aggregate NDVI is also reported for a fixed set of pixels present in every year; this reduces bias from changing spatial coverage.",
                     "BY corrects the spatial multiple-testing burden only conditional on valid pixel p-values.",
                     "The subset is a local 4 km by 4 km sample window, not a map of all Tajikistan.",
                 ],
@@ -232,7 +268,7 @@ def main() -> int:
                 "modis_ndvi_composites": ndvi_data["composite_count"],
                 "modis_ndvi_valid_observations": len(ndvi_data["valid_observations"]),
                 "modis_ndvi_pixels_with_trends": len(pixel_trends),
-                "modis_ndvi_pixels_significant_fdr_05": ndvi_summary["pixels_significant_by_fdr_05"],
+                "modis_ndvi_pixels_by_q05_temporal_uncorrected": ndvi_summary["pixels_by_q_le_0_05_temporal_uncorrected"],
             }, indent=2), flush=True)
         except Exception as exc:
             ndvi_error = str(exc)
@@ -307,12 +343,19 @@ def main() -> int:
     if ndvi_summary.get("status") == "success":
         ndvi_chart_path = charts_dir / "annual_ndvi.svg"
         ndvi_chart_path.write_text(render_line_chart(
-            [(str(row["year"]), float(row["median_of_pixel_annual_medians"]))
-             for row in ndvi_annual_rows],
-            "Annual median MODIS NDVI across sampled pixels", "NDVI",
+            [(str(row["year"]), float(row["fixed_panel_median"]))
+             for row in ndvi_annual_rows if row["fixed_panel_median"] is not None],
+            f"Annual median MODIS NDVI — fixed {ndvi_summary['fixed_panel_pixels']}-pixel panel", "NDVI",
         ), encoding="utf-8")
         chart_paths["annual_ndvi.svg"] = str(ndvi_chart_path)
         ndvi_summary["artifacts"]["annual_ndvi_svg"] = str(ndvi_chart_path)
+        coverage_chart_path = charts_dir / "annual_ndvi_coverage.svg"
+        coverage_chart_path.write_text(render_line_chart(
+            [(str(row["year"]), float(row["pixels_with_valid_data"])) for row in ndvi_annual_rows],
+            "Annual MODIS NDVI spatial coverage", "Pixels with valid data",
+        ), encoding="utf-8")
+        chart_paths["annual_ndvi_coverage.svg"] = str(coverage_chart_path)
+        ndvi_summary["artifacts"]["annual_ndvi_coverage_svg"] = str(coverage_chart_path)
 
     report = {
         "generated_at_utc": utc_timestamp(),
@@ -330,6 +373,17 @@ def main() -> int:
         "power_time_series_analysis": time_series_analysis,
         "modis_ndvi": ndvi_summary,
         "cross_source_monthly_analysis": cross_source_summary,
+        "annual_change_detection": {
+            "power_temperature": {
+                "pettitt": pettitt_test([(int(row["year"]), float(row["mean_temperature_c"])) for row in time_series_analysis["annual"]]),
+                "robust_anomalies": robust_anomalies([(str(row["year"]), float(row["mean_temperature_c"])) for row in time_series_analysis["annual"]]),
+            },
+            "power_precipitation": {
+                "pettitt": pettitt_test([(int(row["year"]), float(row["precipitation_total_mm"])) for row in time_series_analysis["annual"]]),
+                "robust_anomalies": robust_anomalies([(str(row["year"]), float(row["precipitation_total_mm"])) for row in time_series_analysis["annual"]]),
+            },
+            "ndvi_fixed_panel": ndvi_summary.get("annual_fixed_panel_change_detection"),
+        },
         "charts": chart_paths,
         "imagery": {
             "status": "skipped" if args.skip_gibs else "collected",

@@ -144,7 +144,7 @@ def _search_items(
             composite_end = date.fromisoformat(str(props["end_datetime"])[:10])
         except (KeyError, ValueError):
             continue
-        if composite_end < start or composite_start > end:
+        if composite_start < start or composite_start > end:
             continue
         geometry = item.get("geometry")
         if not isinstance(geometry, dict) or not _geometry_contains(geometry, longitude, latitude):
