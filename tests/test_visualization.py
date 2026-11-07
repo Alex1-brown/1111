@@ -4,6 +4,10 @@ from science_core.visualization import render_line_chart
 
 
 class VisualizationTests(unittest.TestCase):
+    def test_cli_module_imports(self):
+        from science_core.cli import main
+        self.assertTrue(callable(main))
+
     def test_chart_contains_title_and_values(self):
         svg = render_line_chart([("2020", 1.2), ("2021", 1.5)], "NDVI trend", "NDVI")
         self.assertIn("NDVI trend", svg)
