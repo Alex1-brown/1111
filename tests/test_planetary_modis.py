@@ -7,7 +7,7 @@ from rasterio.transform import Affine
 
 from science_core.planetary_modis import (
     NDVI_ASSET, QUALITY_ASSET, PlanetaryModisError,
-    _geometry_contains, _sign_href, fetch_mod13q1,
+    _geometry_contains, _sign_href, _sample_one_per_month, fetch_mod13q1,
 )
 
 
@@ -67,6 +67,16 @@ class PlanetaryModisTests(unittest.TestCase):
         self.assertTrue(_geometry_contains(geometry, 68.5, 38.5))
         self.assertFalse(_geometry_contains(geometry, 70, 40))
 
+    def test_monthly_sampling_selects_composite_nearest_to_midmonth(self):
+        items = [
+            {"id": "a", "__composite_date": "2020-01-01"},
+            {"id": "b", "__composite_date": "2020-01-17"},
+            {"id": "c", "__composite_date": "2020-02-02"},
+            {"id": "d", "__composite_date": "2020-02-16"},
+        ]
+        selected = _sample_one_per_month(items)
+        self.assertEqual([item["id"] for item in selected], ["b", "d"])
+
     def test_sign_href_adds_token_once(self):
         href = "https://modiseuwest.blob.core.windows.net/modis-061-cogs/a.tif"
         signed = _sign_href(href, "se=abc&sig=xyz")
@@ -110,6 +120,7 @@ class PlanetaryModisTests(unittest.TestCase):
         )
         self.assertEqual(result["product_versions"], ["061"])
         self.assertEqual(result["composite_count"], 1)
+        self.assertEqual(result["available_composite_count"], 1)
         self.assertEqual(result["grid"]["nrows"], 17)
         self.assertEqual(result["quality_counts"]["good"], 285)
         self.assertEqual(result["quality_counts"]["marginal"], 1)

@@ -161,6 +161,26 @@ def _search_items(
     return list(deduplicated.values())
 
 
+
+def _sample_one_per_month(items: list[dict[str, object]]) -> list[dict[str, object]]:
+    """Select one 16-day composite per calendar month, nearest to mid-month."""
+    monthly: dict[str, list[dict[str, object]]] = {}
+    for item in items:
+        key = str(item["__composite_date"])[:7]
+        monthly.setdefault(key, []).append(item)
+    selected = []
+    for month in sorted(monthly):
+        candidates = monthly[month]
+        selected.append(min(
+            candidates,
+            key=lambda item: (
+                abs(date.fromisoformat(str(item["__composite_date"])).day - 15),
+                str(item["id"]),
+            ),
+        ))
+    return selected
+
+
 def _get_sas_token_for_href(href: str, opener: Callable[..., object] | None = None) -> str:
     """Get a SAS token for the exact Azure storage account/container of an asset."""
     parsed = urlparse(href)
@@ -229,7 +249,13 @@ def fetch_mod13q1(
     if start > end:
         raise ValueError("start_date must not be after end_date.")
 
-    items = _search_items(latitude, longitude, start_date, end_date, radius_km, opener)
+    all_items = _search_items(latitude, longitude, start_date, end_date, radius_km, opener)
+    items = _sample_one_per_month(all_items)
+    print(
+        f"STAC search returned {len(all_items)} Terra MOD13Q1.061 items; "
+        f"selected {len(items)} monthly composites for COG analysis.",
+        flush=True,
+    )
     token_cache: dict[tuple[str, str], str] = {}
     try:
         import rasterio
@@ -250,8 +276,10 @@ def fetch_mod13q1(
         CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif",
         GDAL_HTTP_MULTIRANGE="YES",
     ):
-        for item in items:
+        for item_index, item in enumerate(items, start=1):
             item_id = str(item["id"])
+            if item_index == 1 or item_index % 10 == 0 or item_index == len(items):
+                print(f"Reading MODIS COG {item_index}/{len(items)}: {item_id}", flush=True)
             assets = item.get("assets", {})
             if NDVI_ASSET not in assets or QUALITY_ASSET not in assets:
                 raise PlanetaryModisError(f"Required NDVI/QA COG assets are missing from {item_id}.")
@@ -354,6 +382,8 @@ def fetch_mod13q1(
         "start_date": str(items[0]["__composite_date"]),
         "end_date": str(items[-1]["__composite_date"]),
         "composite_count": len(items),
+        "available_composite_count": len(all_items),
+        "sampling_strategy": "One 16-day composite per calendar month, nearest to day 15.",
         "grid": grid,
         "tile_ids": sorted(set(tile_ids)),
         "item_ids": item_ids,
