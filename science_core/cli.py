@@ -32,6 +32,8 @@ def main() -> int:
     parser.add_argument("--image-count", type=int, default=60)
     parser.add_argument("--minimum-images", type=int, default=50,
                         help="Minimum number of valid images required for a successful run")
+    parser.add_argument("--skip-gibs", action="store_true",
+                        help="Skip uncalibrated NASA GIBS browse imagery; quantitative MODIS NDVI remains enabled")
     parser.add_argument("--bbox", default="67.5,37.5,70,39.5", help="west,south,east,north in EPSG:4326")
     parser.add_argument("--image-width", type=int, default=512)
     parser.add_argument("--image-height", type=int, default=512)
@@ -48,16 +50,19 @@ def main() -> int:
     bbox = tuple(float(part) for part in args.bbox.split(","))
     if len(bbox) != 4:
         parser.error("--bbox must contain west,south,east,north")
-    if not 1 <= args.minimum_images <= args.image_count:
+    if not args.skip_gibs and not 1 <= args.minimum_images <= args.image_count:
         parser.error("--minimum-images must be between 1 and --image-count")
     if args.ndvi_minimum_years < 3:
         parser.error("--ndvi-minimum-years must be at least 3")
     if not 1 <= args.ndvi_radius_km <= 100:
         parser.error("--ndvi-radius-km must be between 1 and 100")
-    try:
-        dates = sample_dates(args.imagery_start, args.imagery_end, args.image_count)
-    except ValueError as exc:
-        parser.error(str(exc))
+    if args.skip_gibs:
+        dates = []
+    else:
+        try:
+            dates = sample_dates(args.imagery_start, args.imagery_end, args.image_count)
+        except ValueError as exc:
+            parser.error(str(exc))
 
     args.output.mkdir(parents=True, exist_ok=True)
     print("Fetching NASA POWER daily data...", flush=True)
@@ -281,7 +286,12 @@ def main() -> int:
         total_image_bytes += image_bytes
         previous_pixels = current_pixels
 
-    image_summary = summarize_sequence(comparisons)
+    image_summary = summarize_sequence(comparisons) if comparisons else {
+        "comparison_count": 0,
+        "mean_changed_pixel_percent": None,
+        "median_changed_pixel_percent": None,
+        "mean_absolute_rgb_difference": None,
+    }
     charts_dir = args.output / "charts"
     charts_dir.mkdir(parents=True, exist_ok=True)
     chart_paths = {}
@@ -311,8 +321,8 @@ def main() -> int:
         "dataset_scope": {
             "power_daily_start": args.start, "power_daily_end": args.end,
             "imagery_start": args.imagery_start, "imagery_end": args.imagery_end,
-            "requested_satellite_images": args.image_count,
-            "minimum_required_satellite_images": args.minimum_images,
+            "requested_satellite_images": 0 if args.skip_gibs else args.image_count,
+            "minimum_required_satellite_images": 0 if args.skip_gibs else args.minimum_images,
             "downloaded_satellite_images": len(image_records),
             "failed_image_requests": len(failed_images),
             "image_dimensions": list(dimensions), "total_imagery_bytes": total_image_bytes,
@@ -324,6 +334,7 @@ def main() -> int:
         "cross_source_monthly_analysis": cross_source_summary,
         "charts": chart_paths,
         "imagery": {
+            "status": "skipped" if args.skip_gibs else "collected",
             "source": "NASA GIBS", "layer": "MODIS_Terra_CorrectedReflectance_TrueColor",
             "bbox_epsg4326": bbox, "images": image_records, "failed_requests": failed_images,
             "adjacent_image_comparisons": comparisons, "sequence_summary": image_summary,
@@ -373,7 +384,7 @@ def main() -> int:
         "chart_files": len(chart_paths),
         "total_imagery_megabytes": round(total_image_bytes / (1024 * 1024), 2),
     }, indent=2))
-    if len(image_records) < args.minimum_images:
+    if not args.skip_gibs and len(image_records) < args.minimum_images:
         print(f"ERROR: only {len(image_records)} valid images; {args.minimum_images} required.", flush=True)
         return 2
     if ndvi_error:
