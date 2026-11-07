@@ -161,11 +161,18 @@ def _search_items(
     return list(deduplicated.values())
 
 
-def _get_sas_token(opener: Callable[..., object] | None = None) -> str:
-    payload = _http_json(f"{SAS_API}/token/{COLLECTION_ID}", opener=opener)
+def _get_sas_token_for_href(href: str, opener: Callable[..., object] | None = None) -> str:
+    """Get a SAS token for the exact Azure storage account/container of an asset."""
+    parsed = urlparse(href)
+    account = parsed.netloc.split(".")[0]
+    path_parts = parsed.path.lstrip("/").split("/")
+    if not account or len(path_parts) < 2:
+        raise PlanetaryModisError(f"Cannot identify Azure storage container from asset URL: {href}")
+    container = path_parts[0]
+    payload = _http_json(f"{SAS_API}/token/{account}/{container}", opener=opener)
     token = payload.get("token")
     if not isinstance(token, str) or not token:
-        raise PlanetaryModisError("Planetary Computer SAS endpoint returned no token.")
+        raise PlanetaryModisError(f"Planetary Computer returned no SAS token for {account}/{container}.")
     return token
 
 
@@ -175,6 +182,7 @@ def _sign_href(href: str, token: str) -> str:
         return href
     if any(key in parsed.query for key in ("se=", "sig=", "sp=")):
         return href
+    token = token.lstrip("?")
     return href + ("&" if "?" in href else "?") + token
 
 
@@ -222,7 +230,7 @@ def fetch_mod13q1(
         raise ValueError("start_date must not be after end_date.")
 
     items = _search_items(latitude, longitude, start_date, end_date, radius_km, opener)
-    token = _get_sas_token(opener)
+    token_cache: dict[tuple[str, str], str] = {}
     try:
         import rasterio
         from rasterio.windows import Window
@@ -247,8 +255,17 @@ def fetch_mod13q1(
             assets = item.get("assets", {})
             if NDVI_ASSET not in assets or QUALITY_ASSET not in assets:
                 raise PlanetaryModisError(f"Required NDVI/QA COG assets are missing from {item_id}.")
-            ndvi_href = _sign_href(str(assets[NDVI_ASSET]["href"]), token)
-            qa_href = _sign_href(str(assets[QUALITY_ASSET]["href"]), token)
+            raw_ndvi_href = str(assets[NDVI_ASSET]["href"])
+            raw_qa_href = str(assets[QUALITY_ASSET]["href"])
+            signed_hrefs = []
+            for raw_href in (raw_ndvi_href, raw_qa_href):
+                parsed_href = urlparse(raw_href)
+                container_parts = parsed_href.path.lstrip("/").split("/")
+                token_key = (parsed_href.netloc.split(".")[0], container_parts[0])
+                if token_key not in token_cache:
+                    token_cache[token_key] = _get_sas_token_for_href(raw_href, opener)
+                signed_hrefs.append(_sign_href(raw_href, token_cache[token_key]))
+            ndvi_href, qa_href = signed_hrefs
             composite_date = str(item["__composite_date"])
             with open_raster(ndvi_href) as ndvi_ds, open_raster(qa_href) as qa_ds:
                 x, y = _to_dataset_xy(ndvi_ds, longitude, latitude)
