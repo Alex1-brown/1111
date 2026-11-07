@@ -2,14 +2,21 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
+from collections import defaultdict
 from pathlib import Path
+from statistics import median
 
 from .analysis import analyze_power_payload, compare_rgb_pixels
 from .imagery_series import sample_dates, summarize_sequence
 from .nasa import fetch_gibs_image, fetch_power, utc_timestamp
 from .analysis import valid_values
 from .statistical_analysis import analyze_power_timeseries
+from .ornl_modis import fetch_mod13q1
+from .spatial_analysis import (
+    annual_pixel_medians, analyze_pixel_trends, sinusoidal_pixel_center,
+)
 
 
 def main() -> int:
@@ -26,6 +33,13 @@ def main() -> int:
     parser.add_argument("--bbox", default="67.5,37.5,70,39.5", help="west,south,east,north in EPSG:4326")
     parser.add_argument("--image-width", type=int, default=512)
     parser.add_argument("--image-height", type=int, default=512)
+    parser.add_argument("--ndvi-start", default="2001-01-01")
+    parser.add_argument("--ndvi-end", default="2025-12-31")
+    parser.add_argument("--ndvi-radius-km", type=int, default=2,
+                        help="MODIS subset radius in km around the center point")
+    parser.add_argument("--ndvi-minimum-years", type=int, default=15)
+    parser.add_argument("--skip-ndvi", action="store_true",
+                        help="Skip quantitative MODIS NDVI download and spatial analysis")
     parser.add_argument("--output", type=Path, default=Path("artifacts"))
     args = parser.parse_args()
 
@@ -34,6 +48,10 @@ def main() -> int:
         parser.error("--bbox must contain west,south,east,north")
     if not 1 <= args.minimum_images <= args.image_count:
         parser.error("--minimum-images must be between 1 and --image-count")
+    if args.ndvi_minimum_years < 3:
+        parser.error("--ndvi-minimum-years must be at least 3")
+    if not 1 <= args.ndvi_radius_km <= 100:
+        parser.error("--ndvi-radius-km must be between 1 and 100")
     try:
         dates = sample_dates(args.imagery_start, args.imagery_end, args.image_count)
     except ValueError as exc:
@@ -49,6 +67,140 @@ def main() -> int:
     temperature_series, _ = valid_values(parameters["T2M"], fill_value)
     precipitation_series, _ = valid_values(parameters["PRECTOTCORR"], fill_value)
     time_series_analysis = analyze_power_timeseries(temperature_series, precipitation_series)
+
+    ndvi_summary = {"status": "skipped"}
+    ndvi_error = None
+    if not args.skip_ndvi:
+        try:
+            print("Fetching quantitative MODIS NDVI and pixel-quality data from ORNL DAAC...", flush=True)
+            ndvi_data = fetch_mod13q1(
+                args.latitude, args.longitude,
+                args.ndvi_start, args.ndvi_end, args.ndvi_radius_km,
+            )
+            ndvi_dir = args.output / "modis_ndvi"
+            ndvi_dir.mkdir(parents=True, exist_ok=True)
+            raw_path = ndvi_dir / "ndvi_pixel_observations.csv"
+            with raw_path.open("w", newline="", encoding="utf-8") as csv_file:
+                fields = ["date", "row", "column", "ndvi_raw", "ndvi", "quality_code"]
+                writer = csv.DictWriter(csv_file, fieldnames=fields)
+                writer.writeheader()
+                writer.writerows(ndvi_data["raw_records"])
+
+            annual_pixels = annual_pixel_medians(ndvi_data["valid_observations"])
+            pixel_trends = analyze_pixel_trends(
+                annual_pixels, minimum_years=args.ndvi_minimum_years
+            )
+            grid_meta = ndvi_data["grid"]
+            features = []
+            for trend in pixel_trends:
+                lon, lat = sinusoidal_pixel_center(
+                    grid_meta["latitude"], grid_meta["longitude"],
+                    trend["row"], trend["column"],
+                    grid_meta["nrows"], grid_meta["ncols"],
+                    grid_meta["cellsize_m"],
+                )
+                features.append({
+                    "type": "Feature",
+                    "geometry": {"type": "Point", "coordinates": [lon, lat]},
+                    "properties": trend,
+                })
+            geojson_path = ndvi_dir / "ndvi_spatial_trends.geojson"
+            geojson_path.write_text(json.dumps({
+                "type": "FeatureCollection", "features": features,
+            }, indent=2), encoding="utf-8")
+
+            trend_fields = [
+                "row", "column", "years", "first_year", "last_year",
+                "sen_slope_ndvi_per_year", "kendall_tau", "p_value",
+                "trend_method", "q_value_by", "significant_fdr_05",
+            ]
+            trend_path = ndvi_dir / "ndvi_spatial_trends.csv"
+            with trend_path.open("w", newline="", encoding="utf-8") as csv_file:
+                writer = csv.DictWriter(csv_file, fieldnames=trend_fields)
+                writer.writeheader()
+                writer.writerows(pixel_trends)
+
+            annual_buckets = defaultdict(list)
+            for series in annual_pixels.values():
+                for year, value in series:
+                    annual_buckets[year].append(value)
+            annual_rows = [
+                {
+                    "year": year,
+                    "median_of_pixel_annual_medians": median(values),
+                    "mean_of_pixel_annual_medians": sum(values) / len(values),
+                    "pixels_with_valid_data": len(values),
+                }
+                for year, values in sorted(annual_buckets.items())
+            ]
+            annual_path = ndvi_dir / "ndvi_annual_summary.csv"
+            with annual_path.open("w", newline="", encoding="utf-8") as csv_file:
+                fields = [
+                    "year", "median_of_pixel_annual_medians",
+                    "mean_of_pixel_annual_medians", "pixels_with_valid_data",
+                ]
+                writer = csv.DictWriter(csv_file, fieldnames=fields)
+                writer.writeheader()
+                writer.writerows(annual_rows)
+
+            ndvi_summary = {
+                "status": "success",
+                "product": ndvi_data["product"],
+                "product_versions": ndvi_data["product_versions"],
+                "source": ndvi_data["source"],
+                "source_api": ndvi_data["source_api"],
+                "doi": ndvi_data["doi"],
+                "ndvi_band": ndvi_data["ndvi_band"],
+                "quality_band": ndvi_data["quality_band"],
+                "ndvi_scale_factor": ndvi_data["ndvi_scale_factor"],
+                "quality_policy": ndvi_data["quality_policy"],
+                "date_start": ndvi_data["start_date"],
+                "date_end": ndvi_data["end_date"],
+                "composite_count": ndvi_data["composite_count"],
+                "grid": {
+                    key: value for key, value in grid_meta.items() if key != "header"
+                },
+                "radius_km": args.ndvi_radius_km,
+                "raw_pixel_observations": len(ndvi_data["raw_records"]),
+                "quality_accepted_pixel_observations": len(ndvi_data["valid_observations"]),
+                "quality_counts": ndvi_data["quality_counts"],
+                "pixels_with_annual_data": len(annual_pixels),
+                "pixels_with_trend_estimates": len(pixel_trends),
+                "pixels_significant_by_fdr_05": sum(
+                    bool(item["significant_fdr_05"]) for item in pixel_trends
+                ),
+                "multiple_testing_method": "Benjamini-Yekutieli",
+                "minimum_years_per_pixel": args.ndvi_minimum_years,
+                "artifacts": {
+                    "raw_pixel_observations_csv": str(raw_path),
+                    "annual_summary_csv": str(annual_path),
+                    "spatial_trends_csv": str(trend_path),
+                    "spatial_trends_geojson": str(geojson_path),
+                },
+                "geolocation_warning": (
+                    "GeoJSON pixel centers are approximate: the requested center is treated as the "
+                    "middle pixel center and offsets are inverted using the MODIS sinusoidal sphere. "
+                    "Verify against authoritative source geotransform before high-precision mapping."
+                ),
+                "scientific_limitations": [
+                    "MOD13Q1 is a 16-day best-pixel composite, not a daily observation.",
+                    "Only SummaryQA/pixel-reliability code 0 is accepted; this strict filter reduces coverage.",
+                    "Annual medians suppress seasonal variation but also hide within-year changes.",
+                    "Mann-Kendall p-values are not adjusted for temporal autocorrelation.",
+                    "BY corrects the spatial multiple-testing burden only conditional on valid pixel p-values.",
+                    "The subset is a local 4 km by 4 km sample window, not a map of all Tajikistan.",
+                ],
+            }
+            print(json.dumps({
+                "modis_ndvi_composites": ndvi_data["composite_count"],
+                "modis_ndvi_valid_observations": len(ndvi_data["valid_observations"]),
+                "modis_ndvi_pixels_with_trends": len(pixel_trends),
+                "modis_ndvi_pixels_significant_fdr_05": ndvi_summary["pixels_significant_by_fdr_05"],
+            }, indent=2), flush=True)
+        except Exception as exc:
+            ndvi_error = str(exc)
+            ndvi_summary = {"status": "failed", "error": ndvi_error}
+            print(f"MODIS NDVI analysis failed: {ndvi_error}", flush=True)
 
     try:
         from PIL import Image
@@ -110,6 +262,7 @@ def main() -> int:
         "power_source_url": power_source,
         "power": metrics,
         "power_time_series_analysis": time_series_analysis,
+        "modis_ndvi": ndvi_summary,
         "imagery": {
             "source": "NASA GIBS", "layer": "MODIS_Terra_CorrectedReflectance_TrueColor",
             "bbox_epsg4326": bbox, "images": image_records, "failed_requests": failed_images,
@@ -124,11 +277,11 @@ def main() -> int:
             "NASA GIBS MODIS true-colour images are browse imagery, not calibrated spectral measurements.",
             "RGB differences are screening indicators only; scientific land-cover change needs validated products and methods.",
             "Five years of data alone are not sufficient to establish every long-term climate trend.",
+            "MODIS NDVI trends are local vegetation indicators and do not directly validate air temperature or precipitation.",
         ],
     }
     report_path = args.output / "report.json"
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
-    import csv
     for filename, rows in (
         ("annual_summary.csv", time_series_analysis["annual"]),
         ("monthly_climatology.csv", time_series_analysis["monthly_climatology"]),
@@ -158,6 +311,9 @@ def main() -> int:
     if len(image_records) < args.minimum_images:
         print(f"ERROR: only {len(image_records)} valid images; {args.minimum_images} required.", flush=True)
         return 2
+    if ndvi_error:
+        print("ERROR: quantitative MODIS NDVI analysis did not complete.", flush=True)
+        return 3
     return 0
 
 

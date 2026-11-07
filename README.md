@@ -15,7 +15,7 @@ python -m pip install -r requirements.txt
 python -m science_core.cli --image-count 60 --minimum-images 50
 ```
 
-The CLI writes `artifacts/nasa_power.json`, `artifacts/report.json`, and the downloaded PNG files under `artifacts/modis_series/`.
+The CLI writes `artifacts/nasa_power.json`, `artifacts/report.json`, downloaded PNG files under `artifacts/modis_series/`, and (unless `--skip-ndvi` is set) quantitative MODIS NDVI data, annual summaries, and spatial trend GeoJSON under `artifacts/modis_ndvi/`.
 
 ## GitHub Actions
 The **NASA live data collection** workflow runs when its workflow file is first added to `main`, and can later be started manually from the Actions tab. It uploads the report and imagery as a downloadable artifact for 14 days. The separate Python tests workflow remains an offline unit-test job.
@@ -53,3 +53,12 @@ For annual series with 3–8 observations, the implementation uses an exact perm
 ## Spatial trend statistics
 
 The spatial analysis module supports per-pixel annual NDVI medians, per-pixel Mann-Kendall/Sen trend estimates, and Benjamini-Yekutieli adjusted q-values across pixels. BY is used as a conservative false-discovery-rate procedure under arbitrary dependence. The module also contains an explicitly approximate MODIS sinusoidal row/column geolocation helper; its center-pixel convention must be verified against each source response before map coordinates are treated as precise. This module is a tested analysis layer; the live MODIS ingestion adapter and full spatial map pipeline are separate pending work.
+
+
+## Quantitative satellite vegetation analysis
+
+The live CLI now retrieves MODIS/Terra MOD13Q1 NDVI and pixel-reliability data through the ORNL DAAC TESViS public subset API. It downloads 16-day composites in batches of ten dates, retains the raw NDVI and QA values, applies the 0.0001 NDVI scale factor, and accepts only pixel-reliability code 0 for the analysis. It aggregates valid composites to annual per-pixel medians, calculates Mann-Kendall/Sen trends, applies Benjamini-Yekutieli spatial multiple-testing correction, and exports pixel trend points as GeoJSON plus CSV summaries.
+
+Default NDVI period: 2001-01-01 through 2025-12-31; local subset radius: 2 km around the POWER reference coordinate (approximately 4 × 4 km). The ORNL DAAC service documents a maximum of ten composite dates per subset request. The exact product version returned by the API is recorded in the report.
+
+Important limits: NDVI is a vegetation indicator, not a direct measurement of climate or air temperature. Annual aggregation suppresses seasonality. Temporal autocorrelation is not yet corrected in the Mann-Kendall p-values, and the approximate pixel geolocation must be checked against source metadata before high-precision mapping. A spatially significant trend is not automatically a causal explanation.
