@@ -135,27 +135,21 @@ def fetch_mod13q1(
             "kmAboveBelow": radius_km,
             "kmLeftRight": radius_km,
         }
-        ndvi_payload = _get_json(f"{PRODUCT}/subset", {
-            **request_params, "band": NDVI_BAND,
-        }, opener=opener)
+        subset_payload = _get_json(f"{PRODUCT}/subset", request_params, opener=opener)
         if pause_seconds:
             time.sleep(pause_seconds)
-        quality_payload = _get_json(f"{PRODUCT}/subset", {
-            **request_params, "band": QUALITY_BAND,
-        }, opener=opener)
-        if pause_seconds:
-            time.sleep(pause_seconds)
-        if not isinstance(ndvi_payload, dict) or not isinstance(quality_payload, dict):
+        if not isinstance(subset_payload, dict):
             raise ModisSubsetError("ORNL subset endpoint did not return a JSON object.")
 
+        subset_items = subset_payload.get("subset", [])
         ndvi_rows = {
             str(item.get("modis_date")): item
-            for item in ndvi_payload.get("subset", [])
+            for item in subset_items
             if isinstance(item, dict) and item.get("band") == NDVI_BAND
         }
         quality_rows = {
             str(item.get("modis_date")): item
-            for item in quality_payload.get("subset", [])
+            for item in subset_items
             if isinstance(item, dict) and item.get("band") == QUALITY_BAND
         }
         for date_item in chunk:
@@ -180,19 +174,19 @@ def fetch_mod13q1(
                 raise ModisSubsetError(f"Invalid pixel arrays for composite {modis_date}.")
             if len(ndvi_values) != len(qa_values):
                 raise ModisSubsetError(f"NDVI/QA pixel count mismatch for {modis_date}.")
-            rows = int(ndvi_payload.get("nrows", 0))
-            cols = int(ndvi_payload.get("ncols", 0))
+            rows = int(subset_payload.get("nrows", 0))
+            cols = int(subset_payload.get("ncols", 0))
             if rows <= 0 or cols <= 0 or len(ndvi_values) != rows * cols:
                 raise ModisSubsetError(f"Unexpected grid dimensions for {modis_date}.")
             current_meta = {
                 "nrows": rows,
                 "ncols": cols,
-                "cellsize_m": float(ndvi_payload["cellsize"]),
-                "xllcorner_m": float(ndvi_payload["xllcorner"]),
-                "yllcorner_m": float(ndvi_payload["yllcorner"]),
-                "latitude": float(ndvi_payload["latitude"]),
-                "longitude": float(ndvi_payload["longitude"]),
-                "header": str(ndvi_payload.get("header", "")),
+                "cellsize_m": float(subset_payload["cellsize"]),
+                "xllcorner_m": float(subset_payload["xllcorner"]),
+                "yllcorner_m": float(subset_payload["yllcorner"]),
+                "latitude": float(subset_payload["latitude"]),
+                "longitude": float(subset_payload["longitude"]),
+                "header": str(subset_payload.get("header", "")),
             }
             if metadata is None:
                 metadata = current_meta

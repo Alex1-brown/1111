@@ -22,7 +22,7 @@ class FakeResponse:
 
 
 class ORNLModisTests(unittest.TestCase):
-    def test_download_uses_quality_band_and_filters_pixels(self):
+    def test_download_uses_all_bands_and_filters_pixels(self):
         dates = [
             {"calendar_date": "2020-02-18", "modis_date": "A2020049"},
             {"calendar_date": "2020-03-05", "modis_date": "A2020065"},
@@ -34,10 +34,10 @@ class ORNLModisTests(unittest.TestCase):
             if parsed.path.endswith("/dates"):
                 payload = dates
             else:
-                band = params["band"][0]
                 values = [5000, 6000, 7000, -3000]
                 qa = [0, 1, 2, 255]
                 payload = {
+                    "band": "all",
                     "nrows": 2, "ncols": 2, "cellsize": 231.656,
                     "latitude": 38.5, "longitude": 68.7,
                     "xllcorner": 1000.0, "yllcorner": 2000.0,
@@ -50,6 +50,7 @@ class ORNLModisTests(unittest.TestCase):
                             "version": "061",
                         }
                         for item in dates
+                        for band in (NDVI_BAND, QUALITY_BAND)
                     ],
                 }
             return FakeResponse(payload)
@@ -75,14 +76,15 @@ class ORNLModisTests(unittest.TestCase):
             params = parse_qs(parsed.query)
             if parsed.path.endswith("/dates"):
                 return FakeResponse(dates)
-            band = params["band"][0]
             return FakeResponse({
+                "band": "all",
                 "nrows": 1, "ncols": 1, "cellsize": 231.656,
                 "latitude": 38.5, "longitude": 68.7,
+                "xllcorner": 1000.0, "yllcorner": 2000.0,
                 "subset": [{
                     "band": band, "modis_date": "A2020049",
                     "data": [5000 if band == NDVI_BAND else 0], "version": "006",
-                }],
+                } for band in (NDVI_BAND, QUALITY_BAND)],
             })
         with self.assertRaisesRegex(ModisSubsetError, "refusing to mix product versions"):
             fetch_mod13q1(38.5, 68.7, "2020-01-01", "2020-12-31",
@@ -95,8 +97,8 @@ class ORNLModisTests(unittest.TestCase):
             params = parse_qs(parsed.query)
             if parsed.path.endswith("/dates"):
                 return FakeResponse(dates)
-            band = params["band"][0]
             return FakeResponse({
+                "band": "all",
                 "nrows": 1, "ncols": 1, "cellsize": 231.656,
                 "latitude": 38.5, "longitude": 68.7,
                 "xllcorner": 1000.0, "yllcorner": 2000.0,
@@ -104,7 +106,7 @@ class ORNLModisTests(unittest.TestCase):
                     "band": band, "modis_date": "A2020049",
                     "data": [5000 if band == NDVI_BAND else 0],
                     "filename": "MOD13Q1.A2020049.h23v05.061.2020060000000",
-                }],
+                } for band in (NDVI_BAND, QUALITY_BAND)],
             })
         result = fetch_mod13q1(38.5, 68.7, "2020-01-01", "2020-12-31",
                                opener=opener, pause_seconds=0)
