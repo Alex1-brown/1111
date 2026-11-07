@@ -2,61 +2,67 @@
 
 Last updated: 2026-11-07
 Repository: https://github.com/Alex1-brown/1111
-Default branch: main
-Current HEAD at handoff: 9eee42eb0e3e965e33389e67139c936ce8db2988
+Branch: main
+Current HEAD: 620e23b2f435a088b1f9cd503952f4cf9e35cade
 
 ## Objective
 
-Build a reproducible Earth-system trend-detection prototype for NASA Space Apps 2026 challenge "Be An Earth System Trend Detective". The system is a modular scientific workflow, not a claim of a new universal physical law or a first-ever data-analysis tool.
+Prepare a scientifically defensible prototype for NASA Space Apps 2026 challenge "Be An Earth System Trend Detective". This is a modular analysis workflow, not a claim of inventing a new universal algorithm or physical law.
 
-## Current data pipeline
+## Integrated data pipeline
 
-- NASA POWER daily point data: T2M and PRECTOTCORR, default 2021-01-01 through 2025-12-31.
-- NASA GIBS MODIS Terra true-colour browse images: 60 sampled dates, 512x512; RGB differences are screening-only and not calibrated remote sensing.
-- Quantitative MODIS/Terra MOD13Q1 NDVI and pixel-reliability bands through the public ORNL DAAC TESViS subset API. Default period 2001-01-01 through 2025-12-31; a 2 km radius around the POWER reference coordinate (approximately 4x4 km). Requests are batched in at most 10 composite dates.
-- Only pixel-reliability code 0 is accepted into NDVI trend analysis. NDVI scale factor 0.0001 is applied. Raw values and QA codes are retained in CSV.
-- The CLI now writes annual pixel medians, per-pixel Mann-Kendall/Sen trends, BY-adjusted q-values, spatial-trend CSV and GeoJSON, plus JSON report.
-- The quantitative MODIS workflow is integrated into the live CLI and current GitHub Actions run #4 is processing the new 25-year NDVI dataset. Verify that run before claiming the live NDVI outputs exist.
+- NASA POWER daily point data: T2M and PRECTOTCORR, default 2021-01-01 to 2025-12-31.
+- Quantitative NASA MODIS/Terra MOD13Q1.061 NDVI and pixel-reliability data via ORNL DAAC TESViS public subset API, default 2001-01-01 to 2025-12-31.
+- MOD13Q1 subsets are requested in batches of up to ten composites. The API dates endpoint returns a JSON array (not necessarily an object with a dates property); the adapter supports both shapes.
+- The adapter requires product version 061 and refuses to mix legacy versions. It applies NDVI scale factor 0.0001 and only accepts pixel-reliability code 0. Raw NDVI and QA values are preserved.
+- Default MODIS subset radius is 2 km around the POWER reference coordinate, approximately 4 x 4 km.
+- Per-pixel annual NDVI medians, Mann-Kendall/Sen trends, Benjamini-Yekutieli q-values, spatial CSV and GeoJSON are generated.
+- Monthly cross-source comparison aligns NDVI with POWER T2M/precipitation for common years, calculates calendar-month anomalies, Pearson/Spearman associations, prior-month precipitation associations and detrended anomaly correlations. It is exploratory, not validation or causation.
+- SVG charts are generated for annual temperature, precipitation and NDVI.
+- NASA GIBS true-colour RGB browse imagery remains optional exploratory context. The live workflow now passes --skip-gibs because RGB browse imagery is not calibrated science data and the repeated requests add latency without improving the quantitative trend analysis.
+- The report contains source provenance, units, quality policy, limitations, outputs and error states.
 
-## Architecture and modules
+## Modules
 
-- `science_core/pipeline.py`, `principles.py`: Acquire -> Validate -> Clean -> Process -> Verify -> Visualize orchestration; domain methods remain separate.
-- `science_core/analysis.py`: NASA POWER payload checks, summaries, RGB browse comparison.
-- `science_core/statistical_analysis.py`: paired daily POWER annual/monthly/seasonal summaries, OLS descriptive slopes, Pearson correlation, annual and seasonal non-parametric trend outputs.
-- `science_core/trend_analysis.py`: Mann-Kendall, exact permutation p-values for annual n<=8, Sen slope, Seasonal Mann-Kendall.
-- `science_core/spatial_analysis.py`: annual per-pixel NDVI medians, per-pixel trends, Benjamini-Yekutieli spatial multiple-testing correction, approximate MODIS sinusoidal geolocation helper.
-- `science_core/ornl_modis.py`: public ORNL DAAC MOD13Q1 NDVI and pixel-reliability downloader; retries transient HTTP failures; raw QA retained.
-- `science_core/cross_source_analysis.py`: monthly NDVI/POWER alignment, calendar-month anomalies, Pearson/Spearman associations, previous-month precipitation association and detrended anomaly correlations. This module is tested but not yet wired into the CLI report.
-- `science_core/visualization.py`: dependency-free SVG line chart renderer. This module is tested but not yet wired into the CLI report.
-- `science_core/cli.py`: live NASA/ORNL collection and JSON/CSV/GeoJSON report artifacts.
-- Offline tests currently cover the analysis, statistical, spatial, ORNL adapter, visualization and cross-source modules.
+- `science_core/pipeline.py`, `principles.py`: six-stage orchestration.
+- `analysis.py`: NASA POWER validation and descriptive summaries; RGB browse comparison.
+- `statistical_analysis.py`: annual/monthly/seasonal POWER summaries, descriptive OLS and non-parametric trend results.
+- `trend_analysis.py`: Mann-Kendall, exact permutation p-values for annual n<=8, Sen slope and Seasonal Mann-Kendall.
+- `spatial_analysis.py`: annual per-pixel medians, pixel trends, BY correction and approximate MODIS sinusoidal coordinate helper.
+- `ornl_modis.py`: ORNL DAAC MOD13Q1.061 NDVI and QA downloader with retries and version enforcement.
+- `cross_source_analysis.py`: monthly NDVI/POWER alignment and anomaly correlations.
+- `visualization.py`: dependency-free SVG line charts.
+- `cli.py`: end-to-end collection and report artifacts.
 
-## Verification status
+## Tests and verification
 
-- Live NASA data run #3 (2026-11-07): 1,826 daily POWER temperature records; 1,826 precipitation records; 59/60 valid GIBS images; 58 adjacent RGB comparisons. Artifact: https://github.com/Alex1-brown/1111/actions/runs/42384269989/artifacts/13578264908
-- Offline tests run #21: success, 31 tests.
-- Offline tests run #22: success, 31 tests.
-- Offline tests run #23: success, 35 tests.
-- Offline tests run #24 (cross-source module): in progress at handoff; check status.
-- Live data run #4 (new MOD13Q1 NDVI pipeline): in progress at handoff; run URL https://github.com/Alex1-brown/1111/actions/runs/42387847600. Check actual step logs, report, and artifact before claiming success.
-- New live run is intentionally the only one triggered for the integrated quantitative MODIS pipeline. Do not launch duplicate live runs unless the first fails or code materially changes.
+- Latest fully verified offline suite: 40 tests passed in GitHub Actions run #28.
+- Run #29 tests for the --skip-gibs change: completed successfully.
+- Run #30 tests after changing concurrency: queued; verify when available.
+- Earlier live run #3 (old pipeline) succeeded with 1,826 POWER temperature records, 1,826 precipitation records, 59/60 GIBS images and 58 RGB comparisons. Artifact: https://github.com/Alex1-brown/1111/actions/runs/42384269989/artifacts/13578264908
+- Live run #4 (old CLI revision, with GIBS enabled and before the ORNL dates-array fix) has remained in progress since 2026-11-07T15:44:38Z. It is superseded and should not be treated as validation of the current code.
+- Current intended live run #8 (latest HEAD, MOD13Q1.061 enforced, GIBS skipped, SVG and cross-source outputs enabled) is queued behind run #4. Run #7 is an earlier pending revision. Inspect Actions carefully; do not claim live MODIS results until a latest-HEAD run completes successfully.
+- Current Actions concurrency uses `cancel-in-progress: true` to reduce stale pending work, but this does not retroactively cancel an already-running run. There is no confirmed cancellation of run #4.
 
-## Scientific limitations and next priorities
+## Scientific caveats
 
-1. Check live run #4. If it succeeds, extract actual NDVI composite count, quality-filtered pixel count, grid dimensions, per-pixel trend count, FDR-significant count, annual summary and artifact URL. Inspect report metadata and GeoJSON coordinate assumptions.
-2. Wire `cross_source_analysis.py` into the CLI using the common 2021-2025 months. Export `monthly_cross_source.csv`; keep all associations explicitly exploratory, not validation or causation.
-3. Wire `visualization.py` into the CLI to produce annual temperature, precipitation and NDVI SVG charts. Add chart paths to report.json.
-4. Verify MODIS row/column geolocation against authoritative ORNL source metadata before claiming precise GeoJSON coordinates. Current transform treats request coordinate as middle-pixel center and is explicitly approximate.
-5. Add temporal autocorrelation diagnostics/adjustment before treating Mann-Kendall p-values as inferential. Current MK p-values are not adjusted for serial autocorrelation. BY corrects spatial multiple testing only conditional on valid pixel p-values.
-6. Consider change-point detection, robust anomalies, confidence intervals and map presentation after core outputs are validated.
-7. Preserve raw data, QA, source/version/DOI, units, processing settings and failure records. Never synthesize missing satellite observations.
-8. Keep NASA live Actions usage low: offline tests on code changes; only one live collection run after a meaningful integrated data-pipeline change.
-
-## Known interpretation constraints
-
-- NASA POWER is a gridded product, not a local weather-station measurement.
-- MOD13Q1 is a 16-day vegetation-index composite, not a direct temperature or precipitation measurement.
-- NDVI is a local approximately 4x4 km sample; POWER is a gridded point estimate. Their spatial supports differ.
+- POWER is a gridded point estimate, not a local weather-station observation.
+- MOD13Q1 NDVI is a 16-day vegetation-index composite, not direct temperature or precipitation.
+- NDVI spatial support is a local approximately 4x4 km sample; POWER is a gridded point. Monthly associations are exploratory, not direct validation.
 - Annual medians suppress seasonal variation and hide within-year dynamics.
-- Five-year POWER records alone do not establish long-term climate trends.
-- A detected trend is not an explanation of its cause.
+- Current Mann-Kendall p-values are not corrected for temporal autocorrelation. BY adjusts spatial multiple testing only conditional on valid pixel p-values.
+- The GeoJSON coordinate helper currently assumes the requested coordinate is the center of the middle MODIS pixel and applies an inverse sinusoidal transform. It is explicitly approximate; verify against authoritative source geotransform before claiming precise geolocation.
+- A statistically detected trend does not establish its cause.
+
+## Immediate next steps
+
+1. Monitor current live Actions runs. Run #4 is stale; #8 is the intended current revision.
+2. When the latest-HEAD run completes, inspect logs and artifact contents: MOD13Q1 version, composite count, QA counts, accepted pixel observations, grid dimensions, trend pixels, BY-significant pixels, annual NDVI summary, monthly cross-source rows, SVG files and GeoJSON.
+3. If ORNL API rejects version 061 or the subset API returns an unexpected shape, do not weaken version checks or mix versions. Inspect source response and select an authenticated/official alternative only if needed.
+4. Verify MODIS geolocation against source metadata.
+5. Add temporal autocorrelation diagnostics/adjustment before making inferential significance claims.
+6. Preserve one live run per meaningful integrated pipeline change; use offline tests for other changes.
+
+## Work constraints
+
+Work only on this NASA project until the hackathon starts on 2026-11-14. Do not resume other projects during this period. The scheduled NASA-only daily work automation is set for daytime Asia/Dushanbe, 2026-11-08 through 2026-11-13. Previous automations for unrelated projects have been paused.
