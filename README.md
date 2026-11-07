@@ -1,20 +1,23 @@
 # NASA Universal Science Core
 
-A reusable, testable scientific-data pipeline. The first validation targets are:
+A reusable, testable scientific-data pipeline. The first validation targets are NASA POWER daily point data and NASA GIBS MODIS true-colour browse imagery.
 
-1. **NASA POWER** daily point data (temperature and precipitation).
-2. **NASA GIBS** MODIS true-colour browse imagery.
+The project is independent of paid app-hosting platforms. Source code, tests, provenance and reproducible commands live in GitHub.
 
-The project is deliberately independent of any paid app-hosting platform. Source code, tests, provenance and reproducible commands live in GitHub.
+## The six-stage scientific workflow
 
-## Current scope
+**Acquire → Validate → Clean → Process → Verify → Visualize**
 
-- Fetch real public NASA POWER and GIBS data.
-- Preserve request URLs, timestamps, coordinates, layer names and metadata.
-- Filter NASA fill values and calculate descriptive statistics.
-- Compare RGB browse images with explicit warnings about interpretation.
-- Run offline unit tests without making network calls.
-- Run CI automatically on GitHub Actions.
+The reusable orchestrator is `science_core.pipeline.run_pipeline`. It accepts six domain-specific functions and passes each stage's output to the next. A failed stage stops execution and raises `PipelineError` naming the stage. Verification must explicitly return `True`; a false or ambiguous result is rejected.
+
+This is a software architecture pattern, not a universal scientific equation or a substitute for domain-specific physics, statistics, units, uncertainty analysis, or scientific review. See `science_core/principles.py` for the canonical labels and `science_core/pipeline.py` for the executable implementation.
+
+## Current NASA data modules
+
+- `science_core.nasa`: public NASA POWER and GIBS retrieval.
+- `science_core.analysis`: fill-value filtering, descriptive statistics, monthly means, POWER payload analysis, and RGB browse-image comparison.
+- `science_core.cli`: end-to-end demonstration for the current POWER/GIBS validation dataset.
+- `science_core.pipeline`: reusable six-stage orchestration layer; domain-specific functions are supplied by each workflow.
 
 ## Quick start
 
@@ -30,7 +33,7 @@ pip install -r requirements.txt
 python -m unittest discover -s tests -v
 ```
 
-Fetch the validation dataset:
+Fetch the current NASA validation dataset (requires internet):
 
 ```bash
 python -m science_core.cli --latitude 38.5598 --longitude 68.7870 --start 20240101 --end 20241231 --output artifacts
@@ -41,15 +44,9 @@ The command writes JSON metrics and downloaded imagery under `artifacts/`.
 ## Scientific cautions
 
 - NASA POWER is gridded analysis/reanalysis-derived data, not a direct weather-station observation.
-- GIBS true-colour tiles are browse visualizations. Raw RGB differences are **not** calibrated reflectance differences and must not be presented as validated land-cover change.
-- A single seasonal year cannot establish a long-term climate trend.
+- GIBS true-colour imagery is a browse visualization. Raw RGB differences are not calibrated reflectance differences and are not validated land-cover change.
+- A single year cannot establish a long-term climate trend.
 - This repository is a research prototype, not a certified scientific instrument.
-
-## Architecture
-
-`fetch` → `validate` → `process` → `verify` → `report`
-
-The analysis functions are deterministic and tested separately from network access. Live integration checks are opt-in so ordinary tests remain reproducible and work offline.
 
 ## Sources
 
