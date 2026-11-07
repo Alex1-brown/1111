@@ -1,9 +1,9 @@
 # Project state and handoff
 
-Last updated: 2026-11-07
+Last updated: 2026-11-08
 Repository: https://github.com/Alex1-brown/1111
 Branch: main
-Current HEAD: 4b0282a1f211826381b4918688703655bde3ec74
+Current HEAD: see the main branch for the live revision
 
 ## Objective
 
@@ -74,8 +74,9 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 - URL: https://github.com/Alex1-brown/1111/actions/runs/42390671501
 - Head SHA: aca7cc3d947e8ffdc720b3d34037fcc1caffe46f
 - Status at handoff: in progress.
-- This run uses coverage-based 2003-2023 core period selection, fixed-panel annual NDVI, minimum 3 valid composites per pixel-year, cross-source analysis restricted to the core period, and the generated offline HTML report.
-- Do not claim the final integrated report is complete until this run succeeds and its artifact/report.html are inspected.
+- This run uses coverage-based 2003-2023 core period selection, fixed-panel annual NDVI, minimum 3 valid composites per pixel-year, and the generated offline HTML report.
+- Run #21 completed successfully; artifact ID 13581860343 is available at https://github.com/Alex1-brown/1111/actions/runs/42390671501/artifacts/13581860343.
+- Cross-source monthly analysis is being decoupled from the annual-trend core period so matched months in incomplete edge years are not discarded.
 
 ## Offline tests
 
@@ -95,12 +96,11 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 
 ## Immediate next steps
 
-1. Monitor run #21 and inspect logs/artifact.
-2. Confirm report.json records core trend period 2003-2023, monthly coverage counts, 2024-2025 partial coverage, fixed-panel pixel count and cross-source period.
-3. Inspect `report.html` offline: verify clickable pixel grid, charts, core period, q-value caveat and source links.
-4. Review annual CSV, per-pixel trend CSV, GeoJSON, coverage chart and cross-source CSV.
-5. If run #21 succeeds, prepare the final hackathon submission text and a short demo workflow. Avoid further live runs unless a material scientific change is needed.
-6. Next scientific upgrade, if time allows: temporal-autocorrelation-aware trend inference. A direct precipitation cross-check with GPM IMERG is a later extension; the currently discovered Planetary Computer GPM HHR collection only covers through 2021 and does not provide enough recent overlap for the current POWER period.
+1. Inspect the successful run #21 artifact and offline HTML report; confirm the 2003-2023 annual-trend core period and edge-year coverage.
+2. Keep the cross-source comparison period tied to actual POWER/NDVI date overlap, not the annual-trend core period; only months present in all three sources enter the comparison.
+3. Review annual CSV, per-pixel trend CSV, GeoJSON, coverage chart and cross-source CSV before presenting numerical findings.
+4. Next scientific upgrade: temporal-autocorrelation-aware trend inference or a carefully validated block-bootstrap method.
+5. Prepare a short reproducible demo and final hackathon submission. Avoid further live runs unless a material scientific change is needed.
 
 ## Work constraints
 

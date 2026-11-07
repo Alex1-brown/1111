@@ -26,6 +26,26 @@ from .visualization import render_line_chart
 from .html_report import render_html_report
 
 
+def common_observation_year_bounds(
+    power_start: str, power_end: str, ndvi_start: str, ndvi_end: str
+) -> tuple[int, int]:
+    """Return the calendar-year overlap of the two source observation windows.
+
+    This overlap is intentionally independent of the MODIS annual-trend core
+    period: incomplete edge years may still contain valid matched months for
+    exploratory cross-source analysis, even when they are excluded from
+    long-term annual trend inference.
+    """
+    try:
+        start_year = max(int(power_start[:4]), int(ndvi_start[:4]))
+        end_year = min(int(power_end[:4]), int(ndvi_end[:4]))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Source date bounds must begin with a four-digit year.") from exc
+    if start_year > end_year:
+        raise ValueError("The POWER and NDVI observation periods do not overlap.")
+    return start_year, end_year
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Fetch and analyze public NASA POWER and GIBS data.")
     parser.add_argument("--latitude", type=float, default=38.5598)
@@ -216,12 +236,13 @@ def main() -> int:
                 writer.writerows(ndvi_annual_rows)
 
             try:
-                common_start_year = max(int(args.start[:4]), int(args.ndvi_start[:4]))
-                common_end_year = min(int(args.end[:4]), int(args.ndvi_end[:4]))
+                common_start_year, common_end_year = common_observation_year_bounds(
+                    args.start, args.end, args.ndvi_start, args.ndvi_end
+                )
                 cross_source = analyze_monthly_cross_source(
                     temperature_series, precipitation_series,
                     ndvi_data["valid_observations"],
-                    start_year=common_start_year, end_year=min(common_end_year, trend_end_year),
+                    start_year=common_start_year, end_year=common_end_year,
                 )
                 cross_path = ndvi_dir / "monthly_cross_source.csv"
                 cross_fields = [

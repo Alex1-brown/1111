@@ -1,6 +1,6 @@
-# NASA data pipeline
+# Earth System Trend Detective Engine
 
-A small, reproducible Python workflow for retrieving public NASA POWER daily point data and NASA GIBS MODIS Terra true-colour browse imagery for the Yavan/Dushanbe region of Tajikistan.
+A reproducible, evidence-first workflow combining NASA POWER climate observations with quality-screened NASA MODIS/Terra NDVI to analyze environmental trends, spatial patterns, coverage, and uncertainty for a local study area in Tajikistan.
 
 ## Default live dataset
 - NASA POWER daily T2M and PRECTOTCORR data: 2021-01-01 through 2025-12-31.
@@ -73,7 +73,7 @@ The CLI exports labelled SVG line charts for annual temperature, precipitation, 
 
 ## Cross-source monthly comparison
 
-A separate analysis module aligns monthly MODIS NDVI with NASA POWER 2 m air temperature and corrected precipitation over their common years. It calculates month-of-year anomalies, exploratory Pearson/Spearman associations, previous-month precipitation associations, and correlations after removing a linear time component. This is a comparison of related environmental indicators, not a direct validation: NDVI is a local 4 km sample median while POWER is a gridded point estimate. Autocorrelation, confounding and causation are not resolved.
+A separate analysis module aligns monthly MODIS NDVI with NASA POWER 2 m air temperature and corrected precipitation over the full calendar-year overlap of the two source observation windows. This period is independent of the stricter MODIS annual-trend core period: an incomplete edge year is excluded from long-term annual trend inference, but its individually matched months can still contribute to exploratory cross-source analysis. The module calculates month-of-year anomalies, exploratory Pearson/Spearman associations, previous-month precipitation associations, and correlations after removing a linear time component. This is a comparison of related environmental indicators, not a direct validation: NDVI is a local 4 km sample median while POWER is a gridded point estimate. Autocorrelation, confounding and causation are not resolved.
 
 
 The default live validation workflow skips NASA GIBS true-colour browse imagery because it is not calibrated science data and its repeated image requests add latency without improving the quantitative trend analysis. GIBS remains available as an optional exploratory layer when running the CLI without `--skip-gibs`. The core live run prioritizes quality-screened MOD13Q1 NDVI, NASA POWER time series, cross-source monthly analysis, spatial trend GeoJSON, CSV, JSON and SVG charts.
