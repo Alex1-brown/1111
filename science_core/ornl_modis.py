@@ -28,7 +28,7 @@ class ModisSubsetError(RuntimeError):
 
 
 def _get_json(path: str, params: dict[str, object], timeout: int = 90,
-              opener: Callable[..., object] | None = None) -> dict[str, object]:
+              opener: Callable[..., object] | None = None) -> dict[str, object] | list[object]:
     request = Request(
         f"{API_BASE}/{path}?{urlencode(params)}",
         headers={"Accept": "application/json", "User-Agent": "EarthSystemTrendDetective/0.1"},
@@ -39,8 +39,8 @@ def _get_json(path: str, params: dict[str, object], timeout: int = 90,
         try:
             with open_url(request, timeout=timeout) as response:
                 payload = json.loads(response.read().decode("utf-8"))
-            if not isinstance(payload, dict):
-                raise ModisSubsetError("ORNL API response is not a JSON object.")
+            if not isinstance(payload, (dict, list)):
+                raise ModisSubsetError("ORNL API response is not a JSON object or array.")
             return payload
         except HTTPError as exc:
             last_error = exc
@@ -61,6 +61,7 @@ def fetch_mod13q1(
     end_date: str = "2025-12-31",
     radius_km: int = 2,
     *,
+    expected_version: str = "061",
     opener: Callable[..., object] | None = None,
     pause_seconds: float = 0.15,
 ) -> dict[str, object]:
@@ -81,7 +82,11 @@ def fetch_mod13q1(
 
     common = {"latitude": latitude, "longitude": longitude}
     date_payload = _get_json(f"{PRODUCT}/dates", common, opener=opener)
-    date_rows = date_payload.get("dates")
+    date_rows = (
+        date_payload if isinstance(date_payload, list)
+        else date_payload.get("dates") if isinstance(date_payload, dict)
+        else None
+    )
     if not isinstance(date_rows, list):
         raise ModisSubsetError("ORNL dates response has no dates list.")
 
@@ -126,6 +131,8 @@ def fetch_mod13q1(
         }, opener=opener)
         if pause_seconds:
             time.sleep(pause_seconds)
+        if not isinstance(ndvi_payload, dict) or not isinstance(quality_payload, dict):
+            raise ModisSubsetError("ORNL subset endpoint did not return a JSON object.")
 
         ndvi_rows = {
             str(item.get("modis_date")): item
@@ -142,8 +149,15 @@ def fetch_mod13q1(
             if modis_date not in ndvi_rows or modis_date not in quality_rows:
                 raise ModisSubsetError(f"Missing NDVI or QA layer for composite {modis_date}.")
             ndvi_item, qa_item = ndvi_rows[modis_date], quality_rows[modis_date]
-            if ndvi_item.get("version") is not None:
-                product_versions.add(str(ndvi_item["version"]))
+            version = str(ndvi_item.get("version", ""))
+            if not version:
+                raise ModisSubsetError(f"Source product version is missing for {modis_date}.")
+            if version != expected_version:
+                raise ModisSubsetError(
+                    f"Expected MOD13Q1 version {expected_version}, received {version}; "
+                    "refusing to mix product versions in one trend analysis."
+                )
+            product_versions.add(version)
             ndvi_values, qa_values = ndvi_item.get("data"), qa_item.get("data")
             if not isinstance(ndvi_values, list) or not isinstance(qa_values, list):
                 raise ModisSubsetError(f"Invalid pixel arrays for composite {modis_date}.")
@@ -202,7 +216,7 @@ def fetch_mod13q1(
         "product_versions": sorted(product_versions),
         "source": "ORNL DAAC TESViS MODIS Global Subset Web Service",
         "source_api": f"{API_BASE}/{PRODUCT}",
-        "doi": "https://doi.org/10.5067/MODIS/MOD13Q1.061",
+        "doi": f"https://doi.org/10.5067/MODIS/MOD13Q1.{expected_version}",
         "ndvi_band": NDVI_BAND,
         "quality_band": QUALITY_BAND,
         "ndvi_scale_factor": NDVI_SCALE,
