@@ -94,8 +94,10 @@ class PlanetaryModisTests(unittest.TestCase):
             },
         }
 
+        token_requests = []
         def http_opener(request, timeout=90):
             if "/token/" in request.full_url:
+                token_requests.append(request.full_url)
                 return FakeHTTPResponse({"token": "se=abc&sig=xyz"})
             return FakeHTTPResponse({"features": [item], "links": []})
 
@@ -114,6 +116,10 @@ class PlanetaryModisTests(unittest.TestCase):
         self.assertEqual(result["quality_counts"]["snow_or_ice"], 1)
         self.assertEqual(result["quality_counts"]["cloudy"], 1)
         self.assertEqual(len(result["valid_observations"]), 285)
+        self.assertEqual(
+            token_requests,
+            ["https://planetarycomputer.microsoft.com/api/sas/v1/token/modiseuwest/modis-061-cogs"],
+        )
 
     def test_rejects_empty_stac_search(self):
         def http_opener(request, timeout=90):
