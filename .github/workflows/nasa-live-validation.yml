@@ -1,17 +1,7 @@
 name: NASA live data collection
 
+# Live NASA data collection is manual to avoid consuming Actions quota on code-only commits.
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/nasa-live-validation.yml"
-      - "science_core/cli.py"
-      - "science_core/ornl_modis.py"
-      - "science_core/planetary_modis.py"
-      - "requirements.txt"
-      - "science_core/spatial_analysis.py"
-      - "science_core/statistical_analysis.py"
-      - "science_core/trend_analysis.py"
   workflow_dispatch:
 
 permissions:
