@@ -34,10 +34,10 @@ def _extract_product_version(item: dict[str, object]) -> str | None:
     if explicit:
         return str(explicit)
     filename = str(item.get("filename", ""))
-    match = re.search(r"\\.(\\d{3})\\.\\d{13}(?:\\.|$)", filename)
+    match = re.search(r"\.(\d{3})\.\d{13}(?:\.|$)", filename)
     if match:
         return match.group(1)
-    match = re.search(r"\\.(\\d{3})\\.", filename)
+    match = re.search(r"\.(\d{3})\.", filename)
     return match.group(1) if match else None
 
 
