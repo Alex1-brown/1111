@@ -67,3 +67,8 @@ Important limits: NDVI is a vegetation indicator, not a direct measurement of cl
 ## SVG visualization layer
 
 A dependency-free SVG line-chart renderer is available in `science_core/visualization.py`. It produces labelled vector charts and handles empty/invalid series explicitly. CLI export wiring is the next integration step.
+
+
+## Cross-source monthly comparison
+
+A separate analysis module aligns monthly MODIS NDVI with NASA POWER 2 m air temperature and corrected precipitation over their common years. It calculates month-of-year anomalies, exploratory Pearson/Spearman associations, previous-month precipitation associations, and correlations after removing a linear time component. This is a comparison of related environmental indicators, not a direct validation: NDVI is a local 4 km sample median while POWER is a gridded point estimate. Autocorrelation, confounding and causation are not resolved.
