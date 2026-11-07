@@ -26,14 +26,19 @@ def robust_anomalies(
     mad = median([abs(value - center) for _, value in points])
     output = []
     for date, value in points:
-        score = 0.0 if mad == 0 else 0.6744897501960817 * (value - center) / mad
+        if mad == 0:
+            score = 0.0 if value == center else None
+            is_anomaly = value != center
+        else:
+            score = 0.6744897501960817 * (value - center) / mad
+            is_anomaly = abs(score) > threshold
         output.append({
             "date": date,
             "value": value,
             "median": center,
             "mad": mad,
             "modified_z_score": score,
-            "is_anomaly": abs(score) > threshold,
+            "is_anomaly": is_anomaly,
             "threshold": threshold,
         })
     return output
