@@ -46,7 +46,7 @@ class HTMLReportTests(unittest.TestCase):
             self.assertIn("<svg", html)
 
     def test_render_handles_missing_charts_and_grid(self):
-        html = render_html_report({}, [], {})
+        html = render_html_report({}, [], {"annual_ndvi.svg": "/missing/annual_ndvi.svg"})
         self.assertIn("Spatial trend grid unavailable", html)
         self.assertIn("Chart unavailable", html)
 
