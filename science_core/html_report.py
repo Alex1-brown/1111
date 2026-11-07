@@ -126,10 +126,12 @@ def render_html_report(
                 ("temperature", "NDVI vs temperature"),
                 ("precipitation", "NDVI vs precipitation"),
             ):
+                pearson_key = f"ndvi_vs_{variable}_pearson_r"
+                spearman_key = f"ndvi_vs_{variable}_spearman_rho"
                 rows.append(
                     f"<tr><td>{html.escape(group_name)}: {label}</td>"
-                    f"<td>{metric(group.get(f'ndvi_vs_{variable}_pearson_r'))}</td>"
-                    f"<td>{metric(group.get(f'ndvi_vs_{variable}_spearman_rho'))}</td></tr>"
+                    f"<td>{metric(group.get(pearson_key))}</td>"
+                    f"<td>{metric(group.get(spearman_key))}</td></tr>"
                 )
         if rows:
             cross_table = (
