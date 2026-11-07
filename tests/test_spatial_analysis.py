@@ -32,6 +32,18 @@ class SpatialAnalysisTests(unittest.TestCase):
         self.assertAlmostEqual(result[(0, 0)][1][1], 0.3)
         self.assertNotIn((0, 1), result)
 
+    def test_annual_medians_require_minimum_composite_count_when_requested(self):
+        records = [
+            (0, 0, "20200101", 0.2),
+            (0, 0, "20200601", 0.4),
+            (0, 0, "20201201", 0.6),
+            (0, 0, "20210101", 0.3),
+        ]
+        result = annual_pixel_medians(records, minimum_observations_per_year=2)
+        self.assertEqual([year for year, _ in result[(0, 0)]], [2020])
+        with self.assertRaises(ValueError):
+            annual_pixel_medians(records, minimum_observations_per_year=0)
+
     def test_pixel_trends_and_fdr(self):
         data = {
             (0, 0): [(year, 0.2 + 0.01 * (year - 2000)) for year in range(2000, 2025)],

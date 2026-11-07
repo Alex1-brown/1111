@@ -46,12 +46,15 @@ def benjamini_yekutieli(p_values: Iterable[float | None]) -> list[float | None]:
 
 def annual_pixel_medians(
     observations: Iterable[tuple[int, int, str, float]],
+    minimum_observations_per_year: int = 1,
 ) -> dict[tuple[int, int], list[tuple[int, float]]]:
     """Aggregate valid NDVI composites to annual per-pixel medians.
 
     Input rows are (row, column, YYYYMMDD, scaled_NDVI). Values outside the
     physical product range [-0.2, 1.0] are rejected.
     """
+    if minimum_observations_per_year < 1:
+        raise ValueError("minimum_observations_per_year must be at least 1.")
     buckets: dict[tuple[int, int, int], list[float]] = defaultdict(list)
     for row, col, date, raw in observations:
         if len(date) != 8 or not date.isdigit():
@@ -63,7 +66,8 @@ def annual_pixel_medians(
         buckets[(int(row), int(col), year)].append(value)
     pixels: dict[tuple[int, int], list[tuple[int, float]]] = defaultdict(list)
     for (row, col, year), values in buckets.items():
-        pixels[(row, col)].append((year, float(median(values))))
+        if len(values) >= minimum_observations_per_year:
+            pixels[(row, col)].append((year, float(median(values))))
     return {key: sorted(series) for key, series in pixels.items()}
 
 

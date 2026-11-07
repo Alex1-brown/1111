@@ -45,6 +45,8 @@ def main() -> int:
     parser.add_argument("--ndvi-radius-km", type=int, default=2,
                         help="MODIS subset radius in km around the center point")
     parser.add_argument("--ndvi-minimum-years", type=int, default=15)
+    parser.add_argument("--ndvi-minimum-composites-per-pixel-year", type=int, default=3,
+                        help="Minimum quality-screened monthly composites for an annual pixel median")
     parser.add_argument("--skip-ndvi", action="store_true",
                         help="Skip quantitative MODIS NDVI download and spatial analysis")
     parser.add_argument("--output", type=Path, default=Path("artifacts"))
@@ -57,6 +59,8 @@ def main() -> int:
         parser.error("--minimum-images must be between 1 and --image-count")
     if args.ndvi_minimum_years < 3:
         parser.error("--ndvi-minimum-years must be at least 3")
+    if args.ndvi_minimum_composites_per_pixel_year < 1:
+        parser.error("--ndvi-minimum-composites-per-pixel-year must be at least 1")
     if not 1 <= args.ndvi_radius_km <= 100:
         parser.error("--ndvi-radius-km must be between 1 and 100")
     if args.skip_gibs:
@@ -99,7 +103,10 @@ def main() -> int:
                 writer.writeheader()
                 writer.writerows(ndvi_data["raw_records"])
 
-            annual_pixels = annual_pixel_medians(ndvi_data["valid_observations"])
+            annual_pixels = annual_pixel_medians(
+                ndvi_data["valid_observations"],
+                minimum_observations_per_year=args.ndvi_minimum_composites_per_pixel_year,
+            )
             pixel_trends = analyze_pixel_trends(
                 annual_pixels, minimum_years=args.ndvi_minimum_years
             )
@@ -246,6 +253,7 @@ def main() -> int:
                 "annual_fixed_panel_change_detection": ndvi_change_detection,
                 "multiple_testing_method": "Benjamini-Yekutieli",
                 "minimum_years_per_pixel": args.ndvi_minimum_years,
+                "minimum_composites_per_pixel_year": args.ndvi_minimum_composites_per_pixel_year,
                 "artifacts": {
                     "raw_pixel_observations_csv": str(raw_path),
                     "annual_summary_csv": str(annual_path),
