@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -14,16 +15,23 @@ GIBS_ENDPOINT = "https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi"
 MODIS_TRUE_COLOR = "MODIS_Terra_CorrectedReflectance_TrueColor"
 
 
-def _download(url: str, timeout: int = 60) -> bytes:
-    request = urllib.request.Request(url, headers={"User-Agent": "NASA-Universal-Science-Core/0.1"})
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            data = response.read()
-            if not data:
-                raise RuntimeError(f"Empty response from {url}")
-            return data
-    except (urllib.error.URLError, TimeoutError) as exc:
-        raise RuntimeError(f"Could not download NASA resource: {url}: {exc}") from exc
+def _download(url: str, timeout: int = 90, attempts: int = 3) -> bytes:
+    request = urllib.request.Request(url, headers={"User-Agent": "NASA-Universal-Science-Core/0.2"})
+    last_error = None
+    for attempt in range(1, attempts + 1):
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                data = response.read()
+                if not data:
+                    raise RuntimeError(f"Empty response from {url}")
+                return data
+        except (urllib.error.URLError, TimeoutError, RuntimeError) as exc:
+            last_error = exc
+            if attempt < attempts:
+                delay = min(2 ** attempt, 8)
+                print(f"NASA request attempt {attempt}/{attempts} failed; retrying in {delay}s: {exc}", flush=True)
+                time.sleep(delay)
+    raise RuntimeError(f"Could not download NASA resource after {attempts} attempts: {url}: {last_error}") from last_error
 
 
 def power_url(latitude: float, longitude: float, start: str, end: str) -> str:

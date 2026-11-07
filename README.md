@@ -1,60 +1,27 @@
-# NASA Universal Science Core
+# NASA data pipeline
 
-A reusable scientific-data pipeline. The first real-data validation target combines five years of NASA POWER daily meteorological data with a 60-image NASA GIBS MODIS true-colour time series for one region.
+A small, reproducible Python workflow for retrieving public NASA POWER daily point data and NASA GIBS MODIS Terra true-colour browse imagery for the Yavan/Dushanbe region of Tajikistan.
 
-Raw satellite imagery is downloaded at run time and is not committed to the repository.
+## Default live dataset
+- NASA POWER daily T2M and PRECTOTCORR data: 2021-01-01 through 2025-12-31.
+- NASA GIBS MODIS Terra true-colour imagery: 60 evenly sampled dates over the same period, 512 × 512 pixels.
+- The live workflow requires at least 50 valid images. Failed dates are recorded rather than silently replaced; each image request is retried up to three times.
+- Adjacent successful images are compared using simple RGB pixel differences. This is an exploratory browse-image comparison, not calibrated remote sensing.
 
-## Six-stage workflow
-
-**Acquire → Validate → Clean → Process → Verify → Visualize**
-
-The reusable orchestrator is science_core.pipeline.run_pipeline. It is a software architecture pattern, not a universal scientific equation or a substitute for domain-specific science, units, uncertainty analysis or review.
-
-## Real NASA data scope
-
-- NASA POWER daily point data: T2M (2 m air temperature) and PRECTOTCORR (corrected precipitation), 2021-01-01 through 2025-12-31 by default. This is approximately 1,826 daily records per parameter before fill-value filtering.
-- NASA GIBS: 60 MODIS Terra corrected-reflectance true-colour browse images sampled evenly across the same five-year interval. Default image size: 512 × 512 pixels.
-- Each image is stored locally with its date, request URL, dimensions and byte size. Consecutive images are compared and summarized.
-
-GIBS true-colour RGB values are not calibrated spectral measurements. Clouds, atmosphere, illumination and compositing affect pixel differences. Do not interpret RGB difference percentages as measured land-cover change.
-
-## Quick start
-
-Python 3.10+ is recommended.
+## Run locally
 
 ```bash
-python -m venv .venv
-# Windows:
-.venv\Scripts\activate
-# Linux/macOS:
-source .venv/bin/activate
-pip install -r requirements.txt
-python -m unittest discover -s tests -v
+python -m pip install -r requirements.txt
+python -m science_core.cli --image-count 60 --minimum-images 50
 ```
 
-Download the default dataset (requires internet and may take several minutes):
+The CLI writes `artifacts/nasa_power.json`, `artifacts/report.json`, and the downloaded PNG files under `artifacts/modis_series/`.
 
-```bash
-python -m science_core.cli --latitude 38.5598 --longitude 68.7870 --start 20210101 --end 20251231 --imagery-start 2021-01-01 --imagery-end 2025-12-31 --image-count 60 --output artifacts
-```
+## GitHub Actions
+The **NASA live data collection** workflow runs when its workflow file is first added to `main`, and can later be started manually from the Actions tab. It uploads the report and imagery as a downloadable artifact for 14 days. The separate Python tests workflow remains an offline unit-test job.
 
-For a small pilot run, set image-count to 5 and use a shorter imagery date range. The default run downloads 60 actual NASA GIBS images; it does not generate synthetic satellite pictures. If NASA does not return a valid image for a requested date, the run stops instead of silently substituting fabricated data.
-
-The command writes nasa_power.json, report.json and downloaded images under artifacts/modis_series/. Do not commit raw imagery to Git.
-
-## Scientific cautions
-
-- NASA POWER is gridded analysis/reanalysis-derived data, not a direct local weather-station observation.
-- GIBS true-colour imagery is browse visualization, not calibrated reflectance.
-- RGB differences are exploratory screening metrics, not validated land-cover change.
-- Five years of observations do not automatically establish a long-term climate trend; suitable statistical tests, uncertainty estimates and longer context may be required.
-
-## Sources
-
-- NASA POWER API: https://power.larc.nasa.gov/docs/
-- NASA GIBS API: https://nasa-gibs.github.io/gibs-api-docs/
-- NASA Earthdata: https://www.earthdata.nasa.gov/
-
-## License
-
-MIT. See LICENSE.
+## Important scientific limitations
+- NASA POWER values are gridded analysis/reanalysis-derived estimates, not direct measurements from a local weather station.
+- GIBS MODIS true-colour images are browse imagery. RGB changes are not calibrated reflectance, land-cover classification, or proof of environmental change.
+- Clouds, atmospheric conditions, illumination, compositing and missing observations can affect image comparisons.
+- Five years alone do not establish a long-term climate trend. Any scientific conclusion needs a domain-specific hypothesis, suitable validated data, uncertainty analysis and independent checks.
