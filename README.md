@@ -52,16 +52,16 @@ For annual series with 3–8 observations, the implementation uses an exact perm
  
 ## Spatial trend statistics
 
-The spatial analysis module supports per-pixel annual NDVI medians, per-pixel Mann-Kendall/Sen trend estimates, and Benjamini-Yekutieli adjusted q-values across pixels. BY is used as a conservative false-discovery-rate procedure under arbitrary dependence. The module also contains an explicitly approximate MODIS sinusoidal row/column geolocation helper; its center-pixel convention must be verified against each source response before map coordinates are treated as precise. This module is a tested analysis layer; the live MODIS ingestion adapter and full spatial map pipeline are separate pending work.
+The spatial analysis module supports per-pixel annual NDVI medians, per-pixel Mann-Kendall/Sen trend estimates, and Benjamini-Yekutieli adjusted q-values across pixels. The live pipeline reads pixel coordinates from the COG affine transform and CRS, then transforms pixel centers to EPSG:4326. Temporal autocorrelation is not yet corrected in the Mann-Kendall p-values.
 
 
 ## Quantitative satellite vegetation analysis
 
 The live CLI now retrieves NASA MODIS/Terra MOD13Q1.061 NDVI and pixel-reliability COGs through the public Microsoft Planetary Computer STAC API. It uses the official collection ID, public collection-level SAS token, and the source COG affine transform/CRS for pixel geolocation. It downloads 16-day composites in batches of ten dates, retains the raw NDVI and QA values, applies the 0.0001 NDVI scale factor, and accepts only pixel-reliability code 0 for the analysis. It aggregates valid composites to annual per-pixel medians, calculates Mann-Kendall/Sen trends, applies Benjamini-Yekutieli spatial multiple-testing correction, and exports pixel trend points as GeoJSON plus CSV summaries.
 
-Default NDVI period: 2001-01-01 through 2025-12-31; local subset radius: 2 km around the POWER reference coordinate (approximately 4 × 4 km). The ORNL DAAC service documents a maximum of ten composite dates per subset request. The exact product version returned by the API is recorded in the report.
+Default NDVI period: 2001-01-01 through 2025-12-31; local subset radius: 2 km around the POWER reference coordinate (approximately 4 × 4 km). The live data source is the explicit MOD13Q1.061 STAC collection; item IDs are checked for collection 061. COG pixel windows are read using HTTP range requests and a container-scoped Planetary Computer SAS token. The report records collection ID, item IDs, tile IDs, COG grid CRS/transform and quality policy.
 
-Important limits: NDVI is a vegetation indicator, not a direct measurement of climate or air temperature. Annual aggregation suppresses seasonality. Temporal autocorrelation is not yet corrected in the Mann-Kendall p-values, and the approximate pixel geolocation must be checked against source metadata before high-precision mapping. A spatially significant trend is not automatically a causal explanation.
+Important limits: NDVI is a vegetation indicator, not a direct measurement of climate or air temperature. Annual aggregation suppresses seasonality. Temporal autocorrelation is not yet corrected in the Mann-Kendall p-values. A spatially significant trend is not automatically a causal explanation.
 
 
 ## SVG visualization layer
@@ -81,7 +81,8 @@ The default live validation workflow skips NASA GIBS true-colour browse imagery 
 
 - NASA Space Apps 2026 challenge: https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/
 - NASA MODIS/Terra MOD13Q1 Version 6.1 product and citation: https://doi.org/10.5067/MODIS/MOD13Q1.061
-- ORNL DAAC MODIS Global Subset Web Service: https://modis.ornl.gov/data/modis_webservice.html
+- Microsoft Planetary Computer MODIS 13Q1 Collection 061: https://planetarycomputer.microsoft.com/api/stac/v1/collections/modis-13Q1-061
+- Microsoft Planetary Computer SAS token documentation: https://planetarycomputer.microsoft.com/docs/concepts/sas/
 - NASA POWER Daily API documentation: https://power.larc.nasa.gov/docs/services/api/temporal/daily/
 
 The project records product version, source, DOI, units, QA policy and analysis settings in its generated report. If a source response does not match the expected product version or schema, the pipeline fails that data stage rather than silently mixing incompatible records.
