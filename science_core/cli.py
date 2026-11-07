@@ -13,9 +13,9 @@ from .imagery_series import sample_dates, summarize_sequence
 from .nasa import fetch_gibs_image, fetch_power, utc_timestamp
 from .analysis import valid_values
 from .statistical_analysis import analyze_power_timeseries
-from .ornl_modis import fetch_mod13q1
+from .planetary_modis import fetch_mod13q1, pixel_center_lonlat
 from .spatial_analysis import (
-    annual_pixel_medians, analyze_pixel_trends, sinusoidal_pixel_center_from_origin,
+    annual_pixel_medians, analyze_pixel_trends,
 )
 from .cross_source_analysis import analyze_monthly_cross_source
 from .visualization import render_line_chart
@@ -103,11 +103,8 @@ def main() -> int:
             grid_meta = ndvi_data["grid"]
             features = []
             for trend in pixel_trends:
-                lon, lat = sinusoidal_pixel_center_from_origin(
-                    grid_meta["xllcorner_m"], grid_meta["yllcorner_m"],
-                    trend["row"], trend["column"],
-                    grid_meta["nrows"], grid_meta["ncols"],
-                    grid_meta["cellsize_m"],
+                lon, lat = pixel_center_lonlat(
+                    grid_meta, trend["row"], trend["column"]
                 )
                 features.append({
                     "type": "Feature",
@@ -187,6 +184,8 @@ def main() -> int:
                 "product_versions": ndvi_data["product_versions"],
                 "source": ndvi_data["source"],
                 "source_api": ndvi_data["source_api"],
+                "collection_id": ndvi_data["collection_id"],
+                "tile_ids": ndvi_data["tile_ids"],
                 "doi": ndvi_data["doi"],
                 "ndvi_band": ndvi_data["ndvi_band"],
                 "quality_band": ndvi_data["quality_band"],
@@ -217,9 +216,8 @@ def main() -> int:
                     "monthly_cross_source_csv": cross_source_summary.get("artifact_csv"),
                 },
                 "geolocation_warning": (
-                    "GeoJSON pixel centers use the ORNL source xllcorner/yllcorner and cellsize "
-                    "metadata in the MODIS sinusoidal projection. Row orientation is assumed north-to-south; "
-                    "verify against a reference raster before high-precision boundary use."
+                    "GeoJSON pixel centers use the authoritative affine transform and CRS read from the "
+                    "NASA MOD13Q1.061 cloud-optimized GeoTIFF. Pixel centers are transformed to EPSG:4326."
                 ),
                 "scientific_limitations": [
                     "MOD13Q1 is a 16-day best-pixel composite, not a daily observation.",

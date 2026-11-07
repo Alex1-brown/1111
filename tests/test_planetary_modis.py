@@ -1,6 +1,5 @@
 import json
 import unittest
-from urllib.parse import parse_qs, urlparse
 
 import numpy as np
 import rasterio
@@ -27,13 +26,13 @@ class FakeHTTPResponse:
 
 
 class FakeRaster:
-    def __init__(self, asset, window=None):
+    def __init__(self, asset):
         self.asset = asset
         self.crs = rasterio.crs.CRS.from_epsg(4326)
         self.res = (250.0, 250.0)
         self.width = 100
         self.height = 100
-        self._window = window
+        self.transform = Affine.identity()
 
     def __enter__(self):
         return self
@@ -45,8 +44,8 @@ class FakeRaster:
         return 50, 50
 
     def read(self, band, window, boundless, fill_value):
-        arr = np.full((int(window.height), int(window.width)), 5000 if self.asset == "ndvi" else 0,
-                      dtype=np.int16)
+        arr = np.full((int(window.height), int(window.width)),
+                      5000 if self.asset == "ndvi" else 0, dtype=np.int16)
         if self.asset == "ndvi":
             arr[0, 0] = -3000
         else:
@@ -87,7 +86,7 @@ class PlanetaryModisTests(unittest.TestCase):
                 "platform": "terra",
                 "start_datetime": "2020-02-18T00:00:00Z",
                 "end_datetime": "2020-03-05T23:59:59Z",
-                "modis:tile-id": "h23v05",
+                "modis:tile-id": "51021004",
             },
             "assets": {
                 NDVI_ASSET: {"href": "https://modiseuwest.blob.core.windows.net/modis-061-cogs/ndvi.tif"},
@@ -110,10 +109,11 @@ class PlanetaryModisTests(unittest.TestCase):
         self.assertEqual(result["product_versions"], ["061"])
         self.assertEqual(result["composite_count"], 1)
         self.assertEqual(result["grid"]["nrows"], 17)
+        self.assertEqual(result["quality_counts"]["good"], 285)
         self.assertEqual(result["quality_counts"]["marginal"], 1)
         self.assertEqual(result["quality_counts"]["snow_or_ice"], 1)
         self.assertEqual(result["quality_counts"]["cloudy"], 1)
-        self.assertEqual(len(result["valid_observations"]), 286)
+        self.assertEqual(len(result["valid_observations"]), 285)
 
     def test_rejects_empty_stac_search(self):
         def http_opener(request, timeout=90):

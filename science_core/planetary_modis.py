@@ -3,9 +3,10 @@ from __future__ import annotations
 
 import json
 import math
+import time
 from datetime import date
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode, urljoin, urlparse
+from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
 from typing import Callable
 
@@ -34,7 +35,7 @@ def _http_json(
 ) -> dict[str, object]:
     if params:
         url = f"{url}?{urlencode(params)}"
-    request = Request(url, headers={"Accept": "application/json", "User-Agent": "EarthSystemTrendDetective/0.2"})
+    request = Request(url, headers={"Accept": "application/json", "User-Agent": "EarthSystemTrendDetective/0.3"})
     open_url = opener or urlopen
     last_error: Exception | None = None
     for attempt in range(3):
@@ -52,7 +53,6 @@ def _http_json(
             last_error = exc
             if attempt == 2:
                 raise PlanetaryModisError(f"Planetary Computer request failed: {exc}") from exc
-        import time
         time.sleep(1.5 * (attempt + 1))
     raise PlanetaryModisError(f"Planetary Computer request failed: {last_error}")
 
@@ -118,7 +118,7 @@ def _search_items(
             body = json.dumps(next_link.get("body", {})).encode("utf-8")
             request = Request(href, data=body, headers={
                 "Accept": "application/geo+json", "Content-Type": "application/json",
-                "User-Agent": "EarthSystemTrendDetective/0.2",
+                "User-Agent": "EarthSystemTrendDetective/0.3",
             })
             open_url = opener or urlopen
             with open_url(request, timeout=90) as response:
@@ -133,6 +133,9 @@ def _search_items(
     for item in items:
         if not isinstance(item, dict) or not str(item.get("id", "")).startswith(PRODUCT_PREFIX):
             continue
+        item_id = str(item.get("id", ""))
+        if ".061." not in item_id:
+            raise PlanetaryModisError(f"STAC item does not identify MOD13Q1 collection 061: {item_id}")
         props = item.get("properties", {})
         if str(props.get("platform", "")).lower() != "terra":
             continue
@@ -192,8 +195,7 @@ def pixel_center_lonlat(grid: dict[str, object], row: int, column: int) -> tuple
     from rasterio.warp import transform
     if not (0 <= row < int(grid["nrows"]) and 0 <= column < int(grid["ncols"])):
         raise ValueError("Pixel index lies outside the MODIS subset grid.")
-    transform_values = grid["window_transform"]
-    affine = Affine(*transform_values[:6])
+    affine = Affine(*grid["window_transform"][:6])
     x, y = xy(affine, row, column, offset="center")
     lon, lat = transform(str(grid["crs"]), "EPSG:4326", [x], [y])
     return float(lon[0]), float(lat[0])
@@ -222,11 +224,10 @@ def fetch_mod13q1(
     items = _search_items(latitude, longitude, start_date, end_date, radius_km, opener)
     token = _get_sas_token(opener)
     try:
-        import numpy as np
         import rasterio
         from rasterio.windows import Window
     except ImportError as exc:
-        raise PlanetaryModisError("rasterio and numpy are required; install requirements.txt.") from exc
+        raise PlanetaryModisError("rasterio is required; install requirements.txt.") from exc
 
     open_raster = raster_opener or rasterio.open
     raw_records: list[dict[str, object]] = []
@@ -236,8 +237,12 @@ def fetch_mod13q1(
     item_ids = []
     tile_ids = []
 
-    with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif"):
-        for item_index, item in enumerate(items, start=1):
+    with rasterio.Env(
+        GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR",
+        CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif",
+        GDAL_HTTP_MULTIRANGE="YES",
+    ):
+        for item in items:
             item_id = str(item["id"])
             assets = item.get("assets", {})
             if NDVI_ASSET not in assets or QUALITY_ASSET not in assets:
@@ -259,6 +264,8 @@ def fetch_mod13q1(
                 qa_array = qa_ds.read(1, window=window, boundless=True, fill_value=255)
                 if ndvi_array.shape != qa_array.shape:
                     raise PlanetaryModisError(f"NDVI/QA COG window shapes differ for {item_id}.")
+                if ndvi_ds.crs != qa_ds.crs or ndvi_ds.transform != qa_ds.transform:
+                    raise PlanetaryModisError(f"NDVI/QA COG georeferencing differs for {item_id}.")
                 if grid is None:
                     window_transform = ndvi_ds.window_transform(window)
                     grid = {
@@ -271,7 +278,6 @@ def fetch_mod13q1(
                         "center_column": int(half_cols),
                         "requested_latitude": latitude,
                         "requested_longitude": longitude,
-                        "tile_id": str(item.get("properties", {}).get("modis:tile-id", "")),
                     }
                 elif (
                     int(ndvi_array.shape[0]) != int(grid["nrows"])
@@ -286,9 +292,11 @@ def fetch_mod13q1(
                 for row_index, (ndvi_row, qa_row) in enumerate(zip(ndvi_values, qa_values)):
                     for col, (ndvi_raw_value, qa_raw_value) in enumerate(zip(ndvi_row, qa_row)):
                         ndvi_raw, qa = int(ndvi_raw_value), int(qa_raw_value)
-                        ndvi = ndvi_raw * NDVI_SCALE
-                        if qa == 0:
+                        ndvi_valid = -2000 <= ndvi_raw <= 10000
+                        if qa == 0 and ndvi_valid:
                             quality_counts["good"] += 1
+                        elif qa == 0:
+                            quality_counts["other_or_fill"] += 1
                         elif qa == 1:
                             quality_counts["marginal"] += 1
                         elif qa == 2:
@@ -297,15 +305,16 @@ def fetch_mod13q1(
                             quality_counts["cloudy"] += 1
                         else:
                             quality_counts["other_or_fill"] += 1
+                        ndvi = ndvi_raw * NDVI_SCALE
                         raw_records.append({
                             "date": composite_date,
                             "row": row_index,
                             "column": col,
                             "ndvi_raw": ndvi_raw,
-                            "ndvi": ndvi if -2000 <= ndvi_raw <= 10000 else None,
+                            "ndvi": ndvi if ndvi_valid else None,
                             "quality_code": qa,
                         })
-                        if qa == GOOD_QUALITY and -2000 <= ndvi_raw <= 10000:
+                        if qa == GOOD_QUALITY and ndvi_valid:
                             valid_observations.append((row_index, col, date_key, ndvi))
 
             item_ids.append(item_id)

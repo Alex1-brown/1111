@@ -57,7 +57,7 @@ The spatial analysis module supports per-pixel annual NDVI medians, per-pixel Ma
 
 ## Quantitative satellite vegetation analysis
 
-The live CLI now retrieves MODIS/Terra MOD13Q1 NDVI and pixel-reliability data through the ORNL DAAC TESViS public subset API. It downloads 16-day composites in batches of ten dates, retains the raw NDVI and QA values, applies the 0.0001 NDVI scale factor, and accepts only pixel-reliability code 0 for the analysis. It aggregates valid composites to annual per-pixel medians, calculates Mann-Kendall/Sen trends, applies Benjamini-Yekutieli spatial multiple-testing correction, and exports pixel trend points as GeoJSON plus CSV summaries.
+The live CLI now retrieves NASA MODIS/Terra MOD13Q1.061 NDVI and pixel-reliability COGs through the public Microsoft Planetary Computer STAC API. It uses the official collection ID, public collection-level SAS token, and the source COG affine transform/CRS for pixel geolocation. It downloads 16-day composites in batches of ten dates, retains the raw NDVI and QA values, applies the 0.0001 NDVI scale factor, and accepts only pixel-reliability code 0 for the analysis. It aggregates valid composites to annual per-pixel medians, calculates Mann-Kendall/Sen trends, applies Benjamini-Yekutieli spatial multiple-testing correction, and exports pixel trend points as GeoJSON plus CSV summaries.
 
 Default NDVI period: 2001-01-01 through 2025-12-31; local subset radius: 2 km around the POWER reference coordinate (approximately 4 × 4 km). The ORNL DAAC service documents a maximum of ten composite dates per subset request. The exact product version returned by the API is recorded in the report.
 
