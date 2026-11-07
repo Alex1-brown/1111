@@ -41,7 +41,7 @@ class ORNLModisTests(unittest.TestCase):
                 values = [5000, 6000, 7000, -3000] if band == NDVI_BAND else [0, 1, 2, 255]
                 rows.append([
                     filename, "MOD13Q1", modis_date,
-                    "Lat38.5Lon68.7Samp2Line2", "2020060000000", band,
+                    "Lat38.5Lon68.7Samp2Line2", "2020060000000",
                     *[str(value) for value in values],
                 ])
         output = io.StringIO()

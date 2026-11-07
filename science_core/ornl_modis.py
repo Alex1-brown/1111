@@ -178,12 +178,12 @@ def fetch_mod13q1(
         csv_payload = _get_csv(f"{PRODUCT}/subset", request_params, opener=opener)
         parsed: dict[str, dict[str, tuple[list[int | None], str]]] = defaultdict(dict)
         for row in csv.reader(io.StringIO(csv_payload)):
-            if len(row) < 7:
-                continue
-            band = row[5].strip()
-            if band not in {NDVI_BAND, QUALITY_BAND}:
+            if len(row) < 6:
                 continue
             filename = row[0].strip()
+            band = filename.rsplit(".", 1)[-1]
+            if band not in {NDVI_BAND, QUALITY_BAND}:
+                continue
             modis_date = row[2].strip()
             version = _extract_product_version(filename)
             if not version:
@@ -196,7 +196,7 @@ def fetch_mod13q1(
                     "refusing to mix product versions in one trend analysis."
                 )
             values: list[int | None] = []
-            for raw in row[6:]:
+            for raw in row[5:]:
                 try:
                     values.append(int(raw))
                 except (TypeError, ValueError):
