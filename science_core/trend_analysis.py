@@ -7,7 +7,7 @@ corrected, so users must inspect dependence before inferential interpretation.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from itertools import combinations
+from itertools import combinations, permutations
 from math import erfc, sqrt
 from statistics import median
 from typing import Iterable
@@ -59,8 +59,19 @@ def mann_kendall(year_values: Iterable[tuple[float, float]]) -> dict[str, object
         for i, j in combinations(range(len(points)), 2)
     ]
     slope = float(median(slopes)) if slopes else None
-    return _mk_result(score, variance, comparisons_count, len(points), slope,
-                      "Mann-Kendall normal approximation")
+    result = _mk_result(score, variance, comparisons_count, len(points), slope,
+                        "Mann-Kendall normal approximation")
+    if 3 <= len(values) <= 8:
+        permutation_scores = [
+            _mk_components(list(candidate))[0]
+            for candidate in set(permutations(values))
+        ]
+        result["p_value_two_sided"] = (
+            sum(abs(candidate) >= abs(score) for candidate in permutation_scores)
+            / len(permutation_scores)
+        )
+        result["method"] = "Exact permutation Mann-Kendall"
+    return result
 
 
 def seasonal_mann_kendall(

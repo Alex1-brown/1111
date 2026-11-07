@@ -41,3 +41,10 @@ These are descriptive results for the selected five-year period, not proof of lo
 ## Satellite validation status
 
 The current MODIS Terra true-colour GIBS PNGs are browse imagery and cannot be used as calibrated land-surface temperature measurements. A proper satellite comparison requires a quantitative product such as MODIS/Terra MOD11A1.061 daytime/nighttime land-surface temperature, with quality flags and cloud screening, followed by spatial and temporal aggregation. Land-surface temperature is not the same physical quantity as 2 m air temperature, so any comparison must explicitly account for that distinction.
+
+
+## Non-parametric trend analysis
+
+The report now supplements descriptive OLS slopes with Mann-Kendall trend statistics and Sen's median slope for annual temperature and annual precipitation, plus Seasonal Mann-Kendall statistics on year-month aggregates (monthly means for temperature and monthly totals for precipitation). The output includes Kendall S, Kendall tau, Z, two-sided p-value, Sen slope per year and method metadata.
+
+For annual series with 3–8 observations, the implementation uses an exact permutation p-value; larger annual series and seasonal tests use a two-sided normal approximation. Neither currently corrects for serial correlation. Five annual observations provide weak evidence, and seasonal tests need dependence diagnostics and a longer record before strong inference. Spatial multiple-testing correction is not yet implemented.

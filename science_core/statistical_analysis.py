@@ -5,6 +5,8 @@ from collections import defaultdict
 from math import isfinite, sqrt
 from typing import Iterable
 
+from .trend_analysis import mann_kendall, seasonal_mann_kendall
+
 
 def _linear_trend(points: list[tuple[float, float]]) -> dict[str, float | int | None]:
     """Ordinary least-squares slope and R²; descriptive, not a significance test."""
@@ -110,6 +112,25 @@ def analyze_power_timeseries(
         "daily_temperature_precipitation_pearson_r": _pearson(
             [temp[d] for d in paired_dates], [rain[d] for d in paired_dates]
         ),
+        "nonparametric_trends": {
+            "annual_temperature_mann_kendall_sen": mann_kendall([
+                (float(row["year"]), float(row["mean_temperature_c"])) for row in annual_rows
+            ]),
+            "annual_precipitation_mann_kendall_sen": mann_kendall([
+                (float(row["year"]), float(row["precipitation_total_mm"])) for row in annual_rows
+            ]),
+            "seasonal_temperature_mann_kendall_sen": seasonal_mann_kendall(
+                [(d, temp[d]) for d in paired_dates], aggregation="mean"
+            ),
+            "seasonal_precipitation_mann_kendall_sen": seasonal_mann_kendall(
+                [(d, rain[d]) for d in paired_dates], aggregation="sum"
+            ),
+            "caveat": (
+                "Annual Mann-Kendall uses an exact permutation p-value when n <= 8. Seasonal "
+                "Mann-Kendall uses a two-sided asymptotic p-value and year-month aggregates. "
+                "Neither test corrects for serial correlation; five years provide weak evidence."
+            ),
+        },
         "interpretation": (
             "Descriptive analysis of a short five-year gridded dataset. Linear slopes and daily correlation "
             "are exploratory, not proof of climate change, causation, or local station accuracy. "
