@@ -22,7 +22,15 @@ class HTMLReportTests(unittest.TestCase):
                     },
                 },
                 "power_time_series_analysis": {"paired_valid_days": 100},
-                "cross_source_monthly_analysis": {"common_months": 10},
+                "cross_source_monthly_analysis": {
+                    "common_months": 10,
+                    "anomaly_correlations": {
+                        "ndvi_vs_temperature_pearson_r": 0.2,
+                        "ndvi_vs_temperature_spearman_rho": 0.3,
+                        "ndvi_vs_precipitation_pearson_r": 0.1,
+                        "ndvi_vs_precipitation_spearman_rho": 0.15,
+                    },
+                },
             }
             trends = [
                 {"row": 0, "column": 0, "sen_slope_ndvi_per_year": -0.01, "q_value_by": 0.02, "years": 20},
@@ -33,6 +41,8 @@ class HTMLReportTests(unittest.TestCase):
             self.assertIn("Select a grid cell", html)
             self.assertIn("temporal autocorrelation", html)
             self.assertIn("2018", html)
+            self.assertIn("0.200", html)
+            self.assertIn("NDVI vs temperature", html)
             self.assertIn("<svg", html)
 
     def test_render_handles_missing_charts_and_grid(self):

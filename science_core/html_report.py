@@ -113,13 +113,21 @@ def render_html_report(
     cross_table = "<p class='muted'>Cross-source monthly analysis unavailable.</p>"
     if cross:
         rows = []
-        for key in ("ndvi_vs_temperature", "ndvi_vs_precipitation", "ndvi_vs_temperature_anomaly", "ndvi_vs_precipitation_anomaly"):
-            item = cross.get(key)
-            if isinstance(item, dict):
+        for group_name, group_key in (
+            ("Monthly anomalies", "anomaly_correlations"),
+            ("Detrended anomalies", "detrended_anomaly_correlations"),
+        ):
+            group = cross.get(group_key, {})
+            if not isinstance(group, dict):
+                continue
+            for variable, label in (
+                ("temperature", "NDVI vs temperature"),
+                ("precipitation", "NDVI vs precipitation"),
+            ):
                 rows.append(
-                    f"<tr><td>{html.escape(key.replace('_', ' '))}</td>"
-                    f"<td>{metric(item.get('pearson_r'))}</td>"
-                    f"<td>{metric(item.get('spearman_rho'))}</td></tr>"
+                    f"<tr><td>{html.escape(group_name)}: {label}</td>"
+                    f"<td>{metric(group.get(f'ndvi_vs_{variable}_pearson_r'))}</td>"
+                    f"<td>{metric(group.get(f'ndvi_vs_{variable}_spearman_rho'))}</td></tr>"
                 )
         if rows:
             cross_table = (
