@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from itertools import combinations, permutations
-from math import erfc, sqrt
-from statistics import median
+from math import erfc, floor, sqrt
+from statistics import NormalDist, median
 from typing import Iterable
 
 
@@ -23,10 +23,36 @@ def _mk_components(values: list[float]) -> tuple[int, float, int]:
     return int(score), variance, n * (n - 1) // 2
 
 
-def _mk_result(score: int, variance: float, comparisons_count: int, n: int,
-               slope: float | None, method: str) -> dict[str, float | int | str | None]:
-    if n < 3 or variance <= 0:
+def _sen_slope_ci_95(
+    slopes: list[float], variance: float,
+) -> tuple[float | None, float | None, str | None]:
+    """Nominal 95% Sen interval from MK variance inversion (iid assumption)."""
+    if not slopes:
+        return None, None, None
+    ordered = sorted(float(value) for value in slopes)
+    if variance <= 0:
+        if all(value == 0.0 for value in ordered):
+            return 0.0, 0.0, "Degenerate constant series; every pairwise Sen slope is exactly zero"
+        return None, None, None
+    z_critical = NormalDist().inv_cdf(0.975)
+    rank_width = z_critical * sqrt(variance)
+    offset = floor((len(ordered) - rank_width) / 2.0 + 0.5)
+    offset = max(0, min(offset, (len(ordered) - 1) // 2))
+    return (
+        ordered[offset], ordered[len(ordered) - offset - 1],
+        "Mann-Kendall variance inversion; normal approximation; nominal 95%; assumes independent observations",
+    )
+
+
+def _mk_result(
+    score: int, variance: float, comparisons_count: int, n: int,
+    slope: float | None, slopes: list[float], method: str,
+) -> dict[str, float | int | str | None | bool]:
+    if n < 3 or comparisons_count == 0:
         z = p_value = tau = None
+    elif variance <= 0:
+        # A zero tie-corrected variance with actual comparisons is a constant series.
+        z, p_value, tau = 0.0, 1.0, 0.0
     else:
         if score > 0:
             z = (score - 1) / sqrt(variance)
@@ -35,12 +61,19 @@ def _mk_result(score: int, variance: float, comparisons_count: int, n: int,
         else:
             z = 0.0
         p_value = erfc(abs(z) / sqrt(2.0))
-        tau = score / comparisons_count if comparisons_count else None
+        tau = score / comparisons_count
+    if n < 3 or comparisons_count == 0:
+        ci_lower = ci_upper = ci_method = None
+    else:
+        ci_lower, ci_upper, ci_method = _sen_slope_ci_95(slopes, variance)
     return {
         "n": n, "kendall_s": score, "kendall_tau": tau,
         "z": z, "p_value_two_sided": p_value,
-        "sen_slope_per_year": slope, "method": method,
-        "serial_correlation_adjusted": False,
+        "sen_slope_per_year": slope,
+        "sen_slope_ci_95_lower_per_year": ci_lower,
+        "sen_slope_ci_95_upper_per_year": ci_upper,
+        "sen_slope_ci_95_method": ci_method,
+        "method": method, "serial_correlation_adjusted": False,
     }
 
 
@@ -59,7 +92,7 @@ def mann_kendall(year_values: Iterable[tuple[float, float]]) -> dict[str, object
         for i, j in combinations(range(len(points)), 2)
     ]
     slope = float(median(slopes)) if slopes else None
-    result = _mk_result(score, variance, comparisons_count, len(points), slope,
+    result = _mk_result(score, variance, comparisons_count, len(points), slope, slopes,
                         "Mann-Kendall normal approximation")
     if 3 <= len(values) <= 8:
         permutation_scores = [
@@ -126,7 +159,7 @@ def seasonal_mann_kendall(
 
     slope = float(median(slopes)) if slopes else None
     return _mk_result(
-        total_score, total_variance, total_comparisons, len(monthly), slope,
+        total_score, total_variance, total_comparisons, len(monthly), slope, slopes,
         f"Seasonal Mann-Kendall normal approximation ({aggregation} by year-month; "
         f"{len(months_used)} calendar months)",
     ) | {

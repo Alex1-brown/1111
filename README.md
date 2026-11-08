@@ -45,14 +45,14 @@ The current MODIS Terra true-colour GIBS PNGs are browse imagery and cannot be u
 
 ## Non-parametric trend analysis
 
-The report now supplements descriptive OLS slopes with Mann-Kendall trend statistics and Sen's median slope for annual temperature and annual precipitation, plus Seasonal Mann-Kendall statistics on year-month aggregates (monthly means for temperature and monthly totals for precipitation). The output includes Kendall S, Kendall tau, Z, two-sided p-value, Sen slope per year and method metadata.
+The report now supplements descriptive OLS slopes with Mann-Kendall trend statistics and Sen's median slope for annual temperature and annual precipitation, plus Seasonal Mann-Kendall statistics on year-month aggregates (monthly means for temperature and monthly totals for precipitation). The output includes Kendall S, Kendall tau, Z, two-sided p-value, Sen slope per year and method metadata. It also reports a nominal 95% Sen-slope confidence interval by inverting the tie-corrected Mann–Kendall variance with the normal approximation. This interval assumes independent observations and is not corrected for temporal autocorrelation.
 
-For annual series with 3–8 observations, the implementation uses an exact permutation p-value; larger annual series and seasonal tests use a two-sided normal approximation. Neither currently corrects for serial correlation. Five annual observations provide weak evidence, and seasonal tests need dependence diagnostics and a longer record before strong inference. Spatial multiple-testing correction is not yet implemented.
+For annual series with 3–8 observations, the implementation uses an exact permutation p-value; larger annual series and seasonal tests use a two-sided normal approximation. Neither currently corrects for serial correlation. Five annual observations provide weak evidence, and seasonal tests need dependence diagnostics and a longer record before strong inference. Spatial per-pixel p-values are adjusted across pixels with the Benjamini–Yekutieli procedure; this does not correct temporal autocorrelation in each pixel series.
 
  
 ## Spatial trend statistics
 
-The spatial analysis module supports per-pixel annual NDVI medians, per-pixel Mann-Kendall/Sen trend estimates, and Benjamini-Yekutieli adjusted q-values across pixels. The live pipeline reads pixel coordinates from the COG affine transform and CRS, then transforms pixel centers to EPSG:4326. Temporal autocorrelation is not yet corrected in the Mann-Kendall p-values.
+The spatial analysis module supports per-pixel annual NDVI medians, per-pixel Mann-Kendall/Sen trend estimates with nominal 95% Sen-slope intervals, and Benjamini-Yekutieli adjusted q-values across pixels. The live pipeline reads pixel coordinates from the COG affine transform and CRS, then transforms pixel centers to EPSG:4326. The intervals and Mann-Kendall p-values are not corrected for temporal autocorrelation.
 
 
 ## Quantitative satellite vegetation analysis
@@ -63,7 +63,7 @@ Default NDVI period: 2001-01-01 through 2025-12-31; local subset radius: 2 km ar
 
 Licensing note: the Planetary Computer STAC collection declares its license as proprietary, while listing NASA LP DAAC as producer/licensor/processor. Before redistributing source assets, follow the collection's current license metadata, NASA LP DAAC citation guidance and Planetary Computer data-license terms.
 
-Important limits: NDVI is a vegetation indicator, not a direct measurement of climate or air temperature. Annual aggregation suppresses seasonality. Temporal autocorrelation is not yet corrected in the Mann-Kendall p-values. A spatially significant trend is not automatically a causal explanation.
+Important limits: NDVI is a vegetation indicator, not a direct measurement of climate or air temperature. Annual aggregation suppresses seasonality. Nominal Sen-slope intervals and Mann-Kendall p-values assume independent observations and are not adjusted for temporal autocorrelation. A spatially significant trend is not automatically a causal explanation.
 
 
 ## SVG visualization layer
