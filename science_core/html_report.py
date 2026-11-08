@@ -66,11 +66,18 @@ def render_html_report(
             q = trend.get("q_value_by")
             q_text = "not available" if q is None else f"{float(q):.4g}"
             slope_text = "not available" if slope is None else f"{float(slope):+.5f} NDVI/year"
+            ci_lower = trend.get("sen_slope_ci_95_lower_ndvi_per_year")
+            ci_upper = trend.get("sen_slope_ci_95_upper_ndvi_per_year")
+            ci_text = (
+                f"[{float(ci_lower):+.5f}, {float(ci_upper):+.5f}] NDVI/year"
+                if ci_lower is not None and ci_upper is not None else "not available"
+            )
             years = trend.get("years", "n/a")
             info = (
                 f"Pixel row {row}, column {column}; Sen slope {slope_text}; "
-                f"BY q-value {q_text}; annual observations {years}. "
-                "q-values are exploratory because temporal autocorrelation is not adjusted."
+                f"nominal 95% CI {ci_text}; BY q-value {q_text}; annual observations {years}. "
+                "The interval assumes independent observations; q-values are exploratory because "
+                "temporal autocorrelation is not adjusted."
             )
             cells.append(
                 f"<button class='pixel' type='button' style='background:{color}' "
@@ -188,7 +195,7 @@ footer{{margin-top:34px;color:var(--muted);font-size:13px}}
 <div class="legend"><span><i class="swatch" style="background:#2563eb"></i>NDVI decreasing</span>
 <span><i class="swatch" style="background:#dc6923"></i>NDVI increasing</span>
 <span><i class="swatch" style="background:#d1d5db"></i>No trend estimate</span></div>
-<div class="grid-wrap"><div>{grid_html}</div><div><h3>Pixel details</h3><div id="pixel-detail">Select a grid cell to inspect its Sen slope and BY q-value.</div>
+<div class="grid-wrap"><div>{grid_html}</div><div><h3>Pixel details</h3><div id="pixel-detail">Select a grid cell to inspect its Sen slope, nominal 95% interval and BY q-value.</div>
 <p class="muted">Grid rows and columns follow the MODIS COG subset window. This is a spatial sample grid, not a political or street map.</p></div></div>
 </section>
 <h2>Time-series visualizations</h2>
@@ -202,12 +209,12 @@ footer{{margin-top:34px;color:var(--muted);font-size:13px}}
 <li>NASA MODIS/Terra MOD13Q1.061 250 m NDVI, one 16-day composite selected per calendar month.</li>
 <li>Only pixel-reliability code 0 enters NDVI analysis; annual pixel medians require at least three valid composites.</li>
 <li>Annual spatial summaries use a fixed pixel cohort present in every requested year; changing coverage is shown separately.</li>
-<li>Per-pixel Sen slopes, Mann–Kendall trend tests and Benjamini–Yekutieli spatial q-values.</li>
+<li>Per-pixel Sen slopes, nominal 95% Sen-slope intervals from Mann–Kendall variance inversion, Mann–Kendall tests and Benjamini–Yekutieli spatial q-values.</li>
 <li>Pettitt single-change-point screening and robust median-absolute-deviation anomaly screening.</li>
 </ul></section>
 <h2>Interpretation limits</h2>
 <section class="caveat">
-Mann–Kendall and Pettitt p-values are not adjusted for temporal autocorrelation. Spatial BY q-values are therefore exploratory, not definitive significance claims. NDVI measures vegetation greenness, not temperature or precipitation. POWER is gridded data, not a local weather-station record. Correlation does not prove causation. The spatial grid is a local sample, not a region-wide census.
+Mann–Kendall and Pettitt p-values are not adjusted for temporal autocorrelation. Sen-slope intervals are nominal independent-observation intervals and are not serial-correlation adjusted. Spatial BY q-values are therefore exploratory, not definitive significance claims. NDVI measures vegetation greenness, not temperature or precipitation. POWER is gridded data, not a local weather-station record. Correlation does not prove causation. The spatial grid is a local sample, not a region-wide census.
 </section>
 <footer>Data sources: <a href="https://power.larc.nasa.gov/">NASA POWER</a>; <a href="https://doi.org/10.5067/MODIS/MOD13Q1.061">NASA LP DAAC MOD13Q1.061</a>; <a href="https://planetarycomputer.microsoft.com/api/stac/v1/collections/modis-13Q1-061">Microsoft Planetary Computer STAC collection</a>. Consult the repository README for citation, licensing notes and reproducibility instructions.</footer>
 <script>

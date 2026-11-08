@@ -19,7 +19,7 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 - Only MODIS pixel-reliability code 0 enters NDVI analysis.
 - Annual pixel medians require at least 3 quality-screened monthly composites per pixel-year.
 - The pipeline automatically selects the longest contiguous trend period with at least 11 monthly composites/year. The current data snapshot at this location yields a core period of 2003-2023. Incomplete edge years 2001-2002 and 2024-2025 are excluded from long-term trend inference.
-- Per-pixel Sen slopes and Mann-Kendall trend tests; Benjamini-Yekutieli spatial q-values. Temporal autocorrelation is not yet adjusted, so these q-values are exploratory, not definitive significance claims.
+- Per-pixel Sen slopes, nominal 95% Sen-slope confidence intervals from Mann-Kendall variance inversion, and Benjamini-Yekutieli spatial q-values. The intervals and p-values are not adjusted for temporal autocorrelation, so spatial q-values remain exploratory, not definitive significance claims.
 - Annual aggregate NDVI uses a fixed set of pixels present in every year of the core period, preventing changing spatial coverage from driving the overall trend.
 - Pettitt change-point screening and robust MAD anomaly screening for annual series.
 - Monthly NDVI/POWER cross-source anomaly correlations are restricted to the core period overlap; exploratory association only, not validation or causation.
@@ -31,7 +31,7 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 - `science_core/pipeline.py`, `principles.py`: six-stage orchestration.
 - `analysis.py`: NASA POWER validation and descriptive summaries.
 - `statistical_analysis.py`: annual/monthly/seasonal POWER summaries, descriptive OLS and correlations.
-- `trend_analysis.py`: Mann-Kendall and Sen slope.
+- `trend_analysis.py`: Mann-Kendall, Sen slope and nominal 95% Sen-slope confidence intervals (normal-approximation variance inversion; independent-observation assumption).
 - `change_point.py`: Pettitt single change-point test.
 - `anomaly_analysis.py`: robust MAD anomaly screening.
 - `spatial_analysis.py`: annual per-pixel NDVI medians, coverage-based core period selection, fixed-panel annual summaries, per-pixel trends and BY q-values.
@@ -90,7 +90,7 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 - MOD13Q1 NDVI is a vegetation index, not temperature or precipitation.
 - NDVI and POWER have different spatial support.
 - Monthly correlations do not establish causation or validate either source.
-- Mann-Kendall and Pettitt p-values are not adjusted for temporal autocorrelation. BY q-values are therefore exploratory.
+- Mann-Kendall and Pettitt p-values are not adjusted for temporal autocorrelation. Sen-slope intervals are nominal independent-observation intervals and are also not serial-correlation adjusted. BY q-values are therefore exploratory.
 - The spatial subset is a local sample, not a region-wide census.
 - Planetary Computer STAC collection license metadata must be followed; do not assume the hosted collection is public-domain simply because the source product is NASA.
 

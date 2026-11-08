@@ -169,7 +169,10 @@ def main() -> int:
 
             trend_fields = [
                 "row", "column", "years", "first_year", "last_year",
-                "sen_slope_ndvi_per_year", "kendall_tau", "p_value",
+                "sen_slope_ndvi_per_year",
+                "sen_slope_ci_95_lower_ndvi_per_year",
+                "sen_slope_ci_95_upper_ndvi_per_year",
+                "sen_slope_ci_95_method", "kendall_tau", "p_value",
                 "trend_method", "q_value_by",
                 "by_q_le_0_05_temporal_uncorrected", "serial_correlation_adjusted",
             ]

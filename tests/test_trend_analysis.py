@@ -2,6 +2,7 @@ import unittest
 
 from science_core.trend_analysis import mann_kendall, seasonal_mann_kendall
 from science_core.statistical_analysis import analyze_power_timeseries
+from science_core.spatial_analysis import analyze_pixel_trends
 
 
 class TrendAnalysisTests(unittest.TestCase):
@@ -11,6 +12,10 @@ class TrendAnalysisTests(unittest.TestCase):
         self.assertAlmostEqual(result["sen_slope_per_year"], 1.0)
         self.assertAlmostEqual(result["p_value_two_sided"], 2 / 120)
         self.assertEqual(result["method"], "Exact permutation Mann-Kendall")
+        self.assertAlmostEqual(result["sen_slope_ci_95_lower_per_year"], 1.0)
+        self.assertAlmostEqual(result["sen_slope_ci_95_upper_per_year"], 1.0)
+        self.assertIn("nominal 95%", result["sen_slope_ci_95_method"])
+        self.assertFalse(result["serial_correlation_adjusted"])
 
     def test_monotonic_decreasing_series(self):
         result = mann_kendall([(2000, 5), (2001, 4), (2002, 3), (2003, 2), (2004, 1)])
@@ -21,7 +26,10 @@ class TrendAnalysisTests(unittest.TestCase):
         result = mann_kendall([(1, 2), (2, 2), (3, 2), (4, 2)])
         self.assertEqual(result["kendall_s"], 0)
         self.assertEqual(result["p_value_two_sided"], 1.0)
+        self.assertEqual(result["kendall_tau"], 0.0)
         self.assertEqual(result["sen_slope_per_year"], 0.0)
+        self.assertEqual(result["sen_slope_ci_95_lower_per_year"], 0.0)
+        self.assertEqual(result["sen_slope_ci_95_upper_per_year"], 0.0)
 
     def test_duplicate_time_coordinates_are_rejected(self):
         with self.assertRaises(ValueError):
@@ -36,6 +44,8 @@ class TrendAnalysisTests(unittest.TestCase):
         self.assertEqual(result["calendar_months"], 12)
         self.assertEqual(result["years"], 5)
         self.assertAlmostEqual(result["sen_slope_per_year"], 1.0)
+        self.assertAlmostEqual(result["sen_slope_ci_95_lower_per_year"], 1.0)
+        self.assertAlmostEqual(result["sen_slope_ci_95_upper_per_year"], 1.0)
         self.assertEqual(result["kendall_s"], 120)
 
     def test_seasonal_mk_precipitation_monthly_totals(self):
@@ -66,6 +76,19 @@ class TrendAnalysisTests(unittest.TestCase):
             trends["annual_temperature_mann_kendall_sen"]["method"],
             "Exact permutation Mann-Kendall",
         )
+
+    def test_non_monotonic_ci_brackets_sen_slope(self):
+        result = mann_kendall([
+            (2000, 0.0), (2001, 2.0), (2002, 1.0), (2003, 4.0), (2004, 3.0),
+        ])
+        self.assertLessEqual(result["sen_slope_ci_95_lower_per_year"], result["sen_slope_per_year"])
+        self.assertGreaterEqual(result["sen_slope_ci_95_upper_per_year"], result["sen_slope_per_year"])
+
+    def test_spatial_trend_exports_sen_interval(self):
+        series = {(0, 0): [(year, 0.2 + 0.01 * (year - 2000)) for year in range(2000, 2020)]}
+        result = analyze_pixel_trends(series, minimum_years=15)[0]
+        self.assertAlmostEqual(result["sen_slope_ci_95_lower_ndvi_per_year"], 0.01)
+        self.assertAlmostEqual(result["sen_slope_ci_95_upper_ndvi_per_year"], 0.01)
 
     def test_invalid_aggregation_and_dates(self):
         with self.assertRaises(ValueError):
