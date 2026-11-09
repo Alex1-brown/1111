@@ -91,3 +91,7 @@ The default live validation workflow skips NASA GIBS true-colour browse imagery 
 - Collaud Coen et al. (2020), Effects of the prewhitening method, the time granularity, and the time segmentation on the Mann–Kendall trend detection and the associated Sen's slope. https://doi.org/10.5194/amt-13-6945-2020
 
 The project records product version, source, DOI, units, QA policy and analysis settings in its generated report. If a source response does not match the expected product version or schema, the pipeline fails that data stage rather than silently mixing incompatible records.
+
+## Competition submission and AI-use disclosure
+
+See [SUBMISSION_BRIEF.md](SUBMISSION_BRIEF.md) for the challenge alignment, data sources, methods, limitations, reproducibility instructions, and AI-use disclosure. AI tools assisted with software implementation, review, and documentation; NASA observations are retrieved from the cited providers and are not AI-generated. No NASA branding or insignia is AI-generated or modified.
