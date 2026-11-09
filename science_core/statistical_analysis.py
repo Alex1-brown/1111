@@ -126,9 +126,11 @@ def analyze_power_timeseries(
                 [(d, rain[d]) for d in paired_dates], aggregation="sum"
             ),
             "caveat": (
-                "Annual Mann-Kendall uses an exact permutation p-value when n <= 8. Seasonal "
-                "Mann-Kendall uses a two-sided asymptotic p-value and year-month aggregates. "
-                "Neither test corrects for serial correlation; five years provide weak evidence."
+                "Annual Mann-Kendall uses an exact permutation p-value when n <= 8, under an iid assumption. "
+                "Hamed-Rao variance correction is attempted only for at least 10 equally spaced observations "
+                "with estimable detrended-rank autocorrelation. Seasonal correction is applied within each "
+                "calendar-month stratum only when every contributing stratum meets that requirement. "
+                "The five-year POWER window is too short for this correction; its p-values remain exploratory."
             ),
         },
         "interpretation": (

@@ -1,3 +1,4 @@
+import random
 import unittest
 
 from science_core.trend_analysis import mann_kendall, seasonal_mann_kendall
@@ -16,6 +17,35 @@ class TrendAnalysisTests(unittest.TestCase):
         self.assertAlmostEqual(result["sen_slope_ci_95_upper_per_year"], 1.0)
         self.assertIn("nominal 95%", result["sen_slope_ci_95_method"])
         self.assertFalse(result["serial_correlation_adjusted"])
+        self.assertEqual(result["serial_correlation_status"], "insufficient_length_n_lt_10")
+
+    def test_hamed_rao_reduces_inference_for_positive_serial_dependence(self):
+        rng = random.Random(7)
+        residual = 0.0
+        points = []
+        for index in range(21):
+            residual = 0.7 * residual + rng.gauss(0.0, 1.0)
+            points.append((2000 + index, index * 0.03 + residual))
+        result = mann_kendall(points)
+        self.assertTrue(result["serial_correlation_adjusted"])
+        self.assertGreater(result["serial_correlation_variance_factor"], 1.0)
+        self.assertIn(1, [item["lag"] for item in result["serial_correlation_lags_used"]])
+        self.assertGreaterEqual(
+            result["p_value_two_sided"], result["p_value_two_sided_iid"]
+        )
+        self.assertIn("Hamed-Rao", result["sen_slope_ci_95_method"])
+
+    def test_irregular_time_spacing_is_not_autocorrelation_corrected(self):
+        rng = random.Random(11)
+        residual = 0.0
+        points = []
+        for year in range(2000, 2021):
+            residual = 0.6 * residual + rng.gauss(0.0, 1.0)
+            if year != 2008:
+                points.append((year, 0.02 * (year - 2000) + residual))
+        result = mann_kendall(points)
+        self.assertFalse(result["serial_correlation_adjusted"])
+        self.assertEqual(result["serial_correlation_status"], "irregular_time_spacing")
 
     def test_monotonic_decreasing_series(self):
         result = mann_kendall([(2000, 5), (2001, 4), (2002, 3), (2003, 2), (2004, 1)])
@@ -47,6 +77,23 @@ class TrendAnalysisTests(unittest.TestCase):
         self.assertAlmostEqual(result["sen_slope_ci_95_lower_per_year"], 1.0)
         self.assertAlmostEqual(result["sen_slope_ci_95_upper_per_year"], 1.0)
         self.assertEqual(result["kendall_s"], 120)
+        self.assertFalse(result["serial_correlation_adjusted"])
+
+    def test_seasonal_hamed_rao_requires_all_month_strata(self):
+        rng = random.Random(4)
+        rows = []
+        for month in range(1, 13):
+            residual = 0.0
+            for year in range(2000, 2012):
+                residual = 0.7 * residual + rng.gauss(0.0, 0.2)
+                rows.append((
+                    f"{year}{month:02d}15",
+                    10 + 0.03 * (year - 2000) + residual,
+                ))
+        result = seasonal_mann_kendall(rows, aggregation="mean")
+        self.assertTrue(result["serial_correlation_adjusted"])
+        self.assertGreater(result["serial_correlation_variance_factor"], 0.0)
+        self.assertEqual(result["serial_correlation_status"], "applied_all_calendar_month_strata")
 
     def test_seasonal_mk_precipitation_monthly_totals(self):
         rows = []
@@ -83,12 +130,16 @@ class TrendAnalysisTests(unittest.TestCase):
         ])
         self.assertLessEqual(result["sen_slope_ci_95_lower_per_year"], result["sen_slope_per_year"])
         self.assertGreaterEqual(result["sen_slope_ci_95_upper_per_year"], result["sen_slope_per_year"])
+        self.assertEqual(result["sen_slope_ci_95_lower_per_year"], -1.0)
+        self.assertEqual(result["sen_slope_ci_95_upper_per_year"], 3.0)
 
     def test_spatial_trend_exports_sen_interval(self):
         series = {(0, 0): [(year, 0.2 + 0.01 * (year - 2000)) for year in range(2000, 2020)]}
         result = analyze_pixel_trends(series, minimum_years=15)[0]
         self.assertAlmostEqual(result["sen_slope_ci_95_lower_ndvi_per_year"], 0.01)
         self.assertAlmostEqual(result["sen_slope_ci_95_upper_ndvi_per_year"], 0.01)
+        self.assertFalse(result["serial_correlation_adjusted"])
+        self.assertIsNone(result["q_value_by"])
 
     def test_invalid_aggregation_and_dates(self):
         with self.assertRaises(ValueError):

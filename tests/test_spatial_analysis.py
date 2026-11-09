@@ -1,3 +1,4 @@
+import random
 import unittest
 
 from science_core.spatial_analysis import (
@@ -46,15 +47,29 @@ class SpatialAnalysisTests(unittest.TestCase):
             annual_pixel_medians(records, minimum_observations_per_year=0)
 
     def test_pixel_trends_and_fdr(self):
+        rng = random.Random(3)
+        residual = 0.0
+        trend = []
+        for index in range(25):
+            residual = 0.65 * residual + rng.gauss(0.0, 0.002)
+            trend.append((2000 + index, 0.2 + 0.02 * index + residual))
+        gapped = [point for point in trend if point[0] != 2008]
         data = {
-            (0, 0): [(year, 0.2 + 0.01 * (year - 2000)) for year in range(2000, 2025)],
+            (0, 0): trend,
             (0, 1): [(year, 0.5) for year in range(2000, 2025)],
+            (0, 2): gapped,
         }
         result = analyze_pixel_trends(data, minimum_years=15)
-        self.assertEqual(len(result), 2)
-        self.assertAlmostEqual(result[0]["sen_slope_ndvi_per_year"], 0.01)
-        self.assertTrue(result[0]["by_q_le_0_05_temporal_uncorrected"])
-        self.assertFalse(result[1]["by_q_le_0_05_temporal_uncorrected"])
+        self.assertEqual(len(result), 3)
+        self.assertTrue(result[0]["serial_correlation_adjusted"])
+        self.assertIsNotNone(result[0]["q_value_by"])
+        self.assertTrue(result[0]["by_q_le_0_05_in_eligible_family"])
+        self.assertEqual(result[1]["q_value_by"], 1.0)
+        self.assertFalse(result[1]["by_q_le_0_05_in_eligible_family"])
+        self.assertEqual(result[2]["serial_correlation_status"], "irregular_time_spacing")
+        self.assertIsNone(result[2]["p_value"])
+        self.assertIsNone(result[2]["q_value_by"])
+        self.assertIsNotNone(result[2]["p_value_iid"])
 
     def test_complete_year_range_excludes_partial_years(self):
         dates = (

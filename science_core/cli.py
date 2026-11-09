@@ -173,14 +173,24 @@ def main() -> int:
                 "sen_slope_ci_95_lower_ndvi_per_year",
                 "sen_slope_ci_95_upper_ndvi_per_year",
                 "sen_slope_ci_95_method", "kendall_tau", "p_value",
-                "trend_method", "q_value_by",
-                "by_q_le_0_05_temporal_uncorrected", "serial_correlation_adjusted",
+                "trend_method", "p_value_iid", "serial_correlation_adjusted",
+                "serial_correlation_status", "serial_correlation_variance_factor",
+                "serial_correlation_lags_used", "inferential_eligible", "q_value_by",
+                "by_q_le_0_05_in_eligible_family",
             ]
             trend_path = ndvi_dir / "ndvi_spatial_trends.csv"
             with trend_path.open("w", newline="", encoding="utf-8") as csv_file:
                 writer = csv.DictWriter(csv_file, fieldnames=trend_fields)
                 writer.writeheader()
-                writer.writerows(pixel_trends)
+                writer.writerows(
+                    {
+                        **item,
+                        "serial_correlation_lags_used": json.dumps(
+                            item["serial_correlation_lags_used"], separators=(",", ":")
+                        ),
+                    }
+                    for item in pixel_trends
+                )
 
             annual_buckets = defaultdict(list)
             for series in annual_pixels.values():
@@ -222,8 +232,10 @@ def main() -> int:
                     [(str(year), value) for year, value in fixed_ndvi_series]
                 ),
                 "interpretation_caveat": (
-                    "Pettitt and Mann-Kendall p-values do not correct for temporal autocorrelation. "
-                    "The fixed pixel panel prevents changing spatial coverage from driving the aggregate series."
+                    "Mann-Kendall uses Hamed-Rao variance correction when the fixed-panel annual series "
+                    "has at least 10 equally spaced observations and estimable detrended-rank autocorrelation. "
+                    "Pettitt remains unadjusted for temporal autocorrelation. The fixed pixel panel prevents "
+                    "changing spatial coverage from driving the aggregate series."
                 ),
             }
             annual_path = ndvi_dir / "ndvi_annual_summary.csv"
@@ -297,12 +309,28 @@ def main() -> int:
                 "quality_counts": ndvi_data["quality_counts"],
                 "pixels_with_annual_data": len(annual_pixels),
                 "pixels_with_trend_estimates": len(pixel_trends),
-                "pixels_by_q_le_0_05_temporal_uncorrected": sum(
-                    bool(item["by_q_le_0_05_temporal_uncorrected"]) for item in pixel_trends
+                "pixels_with_temporal_adjustment": sum(
+                    bool(item["serial_correlation_adjusted"]) for item in pixel_trends
+                ),
+                "pixels_in_by_inferential_family": sum(
+                    bool(item["inferential_eligible"]) for item in pixel_trends
+                ),
+                "pixels_excluded_from_by_inferential_family": sum(
+                    not bool(item["inferential_eligible"]) for item in pixel_trends
+                ),
+                "pixels_by_q_le_0_05_in_eligible_family": sum(
+                    bool(item["by_q_le_0_05_in_eligible_family"]) for item in pixel_trends
+                ),
+                "temporal_correction_method": (
+                    "Hamed & Rao (1998) modified Mann-Kendall variance; detrended-rank ACF; "
+                    "significant lags only; n >= 10 and equally spaced observations"
                 ),
                 "fixed_panel_pixels": fixed_panel_pixel_count,
                 "annual_fixed_panel_change_detection": ndvi_change_detection,
-                "multiple_testing_method": "Benjamini-Yekutieli",
+                "multiple_testing_method": (
+                    "Benjamini-Yekutieli across temporally eligible per-pixel p-values; "
+                    "ineligible series excluded"
+                ),
                 "minimum_years_per_pixel": args.ndvi_minimum_years,
                 "minimum_composites_per_pixel_year": args.ndvi_minimum_composites_per_pixel_year,
                 "artifacts": {
@@ -322,7 +350,9 @@ def main() -> int:
                     "One 16-day composite per calendar month is selected nearest to mid-month; this monthly sampling suppresses some within-month variability.",
                     "Annual medians suppress seasonal variation but also hide within-year changes.",
                     "Annual aggregate NDVI uses a fixed spatial pixel panel across the requested years; all-pixel coverage is reported separately to expose missingness.",
-                    "Mann-Kendall and Pettitt p-values are not adjusted for temporal autocorrelation.",
+                    "Hamed-Rao modified Mann-Kendall variance correction is attempted only for at least 10 equally spaced observations with estimable detrended-rank autocorrelation.",
+                    "Short, irregular or otherwise ineligible pixel series have no adjusted p-value and are excluded from the spatial BY family; iid p-values are reference-only.",
+                    "Pettitt p-values are not adjusted for temporal autocorrelation.",
                     f"Trend inference is restricted to {trend_start_year}-{trend_end_year}, the longest contiguous period meeting the monthly composite coverage threshold; 2024-2025 are incomplete in this tile.",
                     "BY corrects the spatial multiple-testing burden only conditional on valid pixel p-values.",
                     "The subset is a local 4 km by 4 km sample window, not a map of all Tajikistan.",
@@ -332,7 +362,7 @@ def main() -> int:
                 "modis_ndvi_composites": ndvi_data["composite_count"],
                 "modis_ndvi_valid_observations": len(ndvi_data["valid_observations"]),
                 "modis_ndvi_pixels_with_trends": len(pixel_trends),
-                "modis_ndvi_pixels_by_q05_temporal_uncorrected": ndvi_summary["pixels_by_q_le_0_05_temporal_uncorrected"],
+                "modis_ndvi_pixels_by_q05_in_eligible_family": ndvi_summary["pixels_by_q_le_0_05_in_eligible_family"],
             }, indent=2), flush=True)
         except Exception as exc:
             ndvi_error = str(exc)

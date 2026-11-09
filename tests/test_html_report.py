@@ -37,11 +37,17 @@ class HTMLReportTests(unittest.TestCase):
                 {"row": 0, "column": 0, "sen_slope_ndvi_per_year": -0.01,
                  "sen_slope_ci_95_lower_ndvi_per_year": -0.015,
                  "sen_slope_ci_95_upper_ndvi_per_year": -0.005,
-                 "q_value_by": 0.02, "years": 20},
+                 "q_value_by": 0.02, "years": 20,
+                 "serial_correlation_adjusted": True,
+                 "serial_correlation_status": "applied",
+                 "sen_slope_ci_95_method": "Hamed-Rao modified variance"},
                 {"row": 0, "column": 1, "sen_slope_ndvi_per_year": 0.01,
                  "sen_slope_ci_95_lower_ndvi_per_year": 0.005,
                  "sen_slope_ci_95_upper_ndvi_per_year": 0.015,
-                 "q_value_by": 0.08, "years": 20},
+                 "q_value_by": None, "p_value_iid": 0.02, "years": 20,
+                 "serial_correlation_adjusted": False,
+                 "serial_correlation_status": "irregular_time_spacing",
+                 "sen_slope_ci_95_method": "iid nominal interval"},
             ]
             html = render_html_report(report, trends, {"annual_ndvi.svg": str(chart)})
             self.assertIn("Earth System Trend Detective", html)
@@ -49,6 +55,8 @@ class HTMLReportTests(unittest.TestCase):
             self.assertIn("temporal autocorrelation", html)
             self.assertIn("nominal 95% CI", html)
             self.assertIn("[-0.01500, -0.00500] NDVI/year", html)
+            self.assertIn("Hamed-Rao variance correction applied", html)
+            self.assertIn("not eligible for adjusted inference", html)
             self.assertIn("2018", html)
             self.assertIn("2003–2023", html)
             self.assertIn("0.200", html)

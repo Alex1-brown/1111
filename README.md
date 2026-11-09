@@ -45,14 +45,14 @@ The current MODIS Terra true-colour GIBS PNGs are browse imagery and cannot be u
 
 ## Non-parametric trend analysis
 
-The report now supplements descriptive OLS slopes with Mann-Kendall trend statistics and Sen's median slope for annual temperature and annual precipitation, plus Seasonal Mann-Kendall statistics on year-month aggregates (monthly means for temperature and monthly totals for precipitation). The output includes Kendall S, Kendall tau, Z, two-sided p-value, Sen slope per year and method metadata. It also reports a nominal 95% Sen-slope confidence interval by inverting the tie-corrected Mann–Kendall variance with the normal approximation. This interval assumes independent observations and is not corrected for temporal autocorrelation.
+The report supplements descriptive OLS slopes with Mann–Kendall/Sen estimates for annual temperature and precipitation and Seasonal Mann–Kendall statistics on year-month aggregates. For at least 10 equally spaced observations, the test attempts the Hamed–Rao (1998) modified variance correction using significant autocorrelations of detrended ranks. The same variance is used for a nominal 95% Sen-slope interval. This is an approximate correction, not a guarantee that dependence is fully removed.
 
-For annual series with 3–8 observations, the implementation uses an exact permutation p-value; larger annual series and seasonal tests use a two-sided normal approximation. Neither currently corrects for serial correlation. Five annual observations provide weak evidence, and seasonal tests need dependence diagnostics and a longer record before strong inference. Spatial per-pixel p-values are adjusted across pixels with the Benjamini–Yekutieli procedure; this does not correct temporal autocorrelation in each pixel series.
+Annual series with 3–8 observations use an exact permutation p-value under an iid assumption. The Hamed–Rao correction is not attempted for fewer than 10 observations, irregular time spacing, or an unestimable detrended-rank autocorrelation function. Seasonal correction is applied within each calendar-month stratum only when every contributing stratum meets those requirements. The current five-year NASA POWER window is too short for this correction; its p-values remain exploratory. For spatial NDVI, only corrected pixel p-values (plus exactly constant series with p=1) enter the Benjamini–Yekutieli family. Other pixels retain Sen slopes and an iid reference p-value, but their adjusted p-value and q-value are null.
 
  
 ## Spatial trend statistics
 
-The spatial analysis module supports per-pixel annual NDVI medians, per-pixel Mann-Kendall/Sen trend estimates with nominal 95% Sen-slope intervals, and Benjamini-Yekutieli adjusted q-values across pixels. The live pipeline reads pixel coordinates from the COG affine transform and CRS, then transforms pixel centers to EPSG:4326. The intervals and Mann-Kendall p-values are not corrected for temporal autocorrelation.
+The spatial analysis module supports per-pixel annual NDVI medians, Sen slopes, Hamed–Rao corrected Mann–Kendall inference for eligible regular series, and Benjamini–Yekutieli q-values over the eligible pixel family. Irregular or otherwise ineligible series have no adjusted p-value or q-value. The live pipeline reads pixel coordinates from the COG affine transform and CRS, then transforms pixel centers to EPSG:4326.
 
 
 ## Quantitative satellite vegetation analysis
@@ -63,7 +63,7 @@ Default NDVI period: 2001-01-01 through 2025-12-31; local subset radius: 2 km ar
 
 Licensing note: the Planetary Computer STAC collection declares its license as proprietary, while listing NASA LP DAAC as producer/licensor/processor. Before redistributing source assets, follow the collection's current license metadata, NASA LP DAAC citation guidance and Planetary Computer data-license terms.
 
-Important limits: NDVI is a vegetation indicator, not a direct measurement of climate or air temperature. Annual aggregation suppresses seasonality. Nominal Sen-slope intervals and Mann-Kendall p-values assume independent observations and are not adjusted for temporal autocorrelation. A spatially significant trend is not automatically a causal explanation.
+Important limits: NDVI is a vegetation indicator, not a direct measurement of climate or air temperature. Annual aggregation suppresses seasonality. Hamed–Rao is an approximate variance correction for regularly spaced series with at least 10 observations; short/irregular series are not corrected. Pettitt change-point p-values remain unadjusted for serial dependence. BY q-values are conditional on the eligible pixel family and do not establish causation.
 
 
 ## SVG visualization layer
@@ -87,5 +87,7 @@ The default live validation workflow skips NASA GIBS true-colour browse imagery 
 - Microsoft Planetary Computer SAS token documentation: https://planetarycomputer.microsoft.com/docs/concepts/sas/
 - Microsoft Planetary Computer data-license guidance: https://planetarycomputer.microsoft.com/docs/overview/about/#data-licenses
 - NASA POWER Daily API documentation: https://power.larc.nasa.gov/docs/services/api/temporal/daily/
+- Hamed, K. H. & Rao, A. R. (1998), A modified Mann-Kendall trend test for autocorrelated data, Journal of Hydrology 204, 182–196. https://doi.org/10.1016/S0022-1694(97)00125-X
+- Collaud Coen et al. (2020), Effects of the prewhitening method, the time granularity, and the time segmentation on the Mann–Kendall trend detection and the associated Sen's slope. https://doi.org/10.5194/amt-13-6945-2020
 
 The project records product version, source, DOI, units, QA policy and analysis settings in its generated report. If a source response does not match the expected product version or schema, the pipeline fails that data stage rather than silently mixing incompatible records.

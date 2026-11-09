@@ -74,17 +74,31 @@ def annual_pixel_medians(
 def analyze_pixel_trends(
     annual_values: Mapping[tuple[int, int], list[tuple[int, float]]],
     minimum_years: int = 15,
-) -> list[dict[str, float | int | str | None]]:
-    """Estimate per-pixel Mann-Kendall/Sen trends and BY-adjust spatial p-values."""
+) -> list[dict[str, object]]:
+    """Estimate per-pixel Sen slopes and apply BY only to eligible p-values.
+
+    A pixel enters the inferential family only when Hamed-Rao correction was
+    estimable for its regularly spaced annual series, or when the series is
+    exactly constant (p=1). Slopes and iid p-values remain available for
+    ineligible pixels, but their adjusted p-value and BY q-value are null.
+    """
     if minimum_years < 3:
         raise ValueError("minimum_years must be at least 3.")
     provisional = []
     for (row, col), series in sorted(annual_values.items()):
-        unique = {int(year): float(value) for year, value in series if isfinite(float(value))}
+        unique = {
+            int(year): float(value)
+            for year, value in series
+            if isfinite(float(value))
+        }
         ordered = sorted(unique.items())
         if len(ordered) < minimum_years:
             continue
         result = mann_kendall([(float(year), value) for year, value in ordered])
+        constant_series = bool(ordered) and all(
+            value == ordered[0][1] for _, value in ordered
+        )
+        inferential_eligible = bool(result["serial_correlation_adjusted"] or constant_series)
         provisional.append({
             "row": int(row),
             "column": int(col),
@@ -96,14 +110,21 @@ def analyze_pixel_trends(
             "sen_slope_ci_95_upper_ndvi_per_year": result["sen_slope_ci_95_upper_per_year"],
             "sen_slope_ci_95_method": result["sen_slope_ci_95_method"],
             "kendall_tau": result["kendall_tau"],
-            "p_value": result["p_value_two_sided"],
+            "p_value": result["p_value_two_sided"] if inferential_eligible else None,
+            "p_value_iid": result["p_value_two_sided_iid"],
             "trend_method": result["method"],
+            "serial_correlation_adjusted": result["serial_correlation_adjusted"],
+            "serial_correlation_status": result["serial_correlation_status"],
+            "serial_correlation_variance_factor": result["serial_correlation_variance_factor"],
+            "serial_correlation_lags_used": result["serial_correlation_lags_used"],
+            "inferential_eligible": inferential_eligible,
         })
     q_values = benjamini_yekutieli([item["p_value"] for item in provisional])
     for item, q_value in zip(provisional, q_values):
         item["q_value_by"] = q_value
-        item["by_q_le_0_05_temporal_uncorrected"] = q_value is not None and q_value <= 0.05
-        item["serial_correlation_adjusted"] = False
+        item["by_q_le_0_05_in_eligible_family"] = (
+            q_value is not None and q_value <= 0.05
+        )
     return provisional
 
 

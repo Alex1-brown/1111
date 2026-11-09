@@ -29,7 +29,7 @@ The current demonstration samples a 17 × 17 MODIS pixel window around the selec
 2. Screen MODIS pixels using the official pixel-reliability layer.
 3. Select the longest continuous MODIS period with at least 11 monthly composites in every year. For the current location and collection snapshot, this produces a core trend period of **2003–2023**. The 2001–2002 and 2024–2025 coverage is incomplete and is not used for long-term trend inference.
 4. Calculate annual per-pixel NDVI medians, then estimate per-pixel Sen slopes and Mann–Kendall trends.
-5. Apply Benjamini–Yekutieli correction across the spatial family of pixel tests. These q-values remain exploratory because temporal autocorrelation has not yet been corrected in the underlying pixel p-values.
+5. Apply the Hamed–Rao (1998) modified Mann–Kendall variance correction to per-pixel annual series with at least ten equally spaced observations and estimable detrended-rank autocorrelation. Apply Benjamini–Yekutieli correction only across temporally eligible pixel tests; ineligible pixels keep descriptive slopes but no adjusted p-value or q-value.
 6. Build an annual aggregate from a fixed set of pixels present in every year of the core period, reducing bias from changing spatial coverage.
 7. Apply Pettitt change-point screening and robust median-absolute-deviation anomaly screening to annual series.
 8. Align monthly NDVI with NASA POWER temperature and precipitation anomalies over their common, adequately covered period. Correlations are exploratory associations, not causal evidence or direct validation of the climate product.
@@ -59,13 +59,14 @@ It also makes incomplete coverage visible. Years with insufficient monthly obser
 - NDVI measures vegetation greenness; it is not air temperature or precipitation.
 - MODIS NDVI and NASA POWER have different spatial supports.
 - Correlation does not establish causation or validate either source.
-- Mann–Kendall and Pettitt p-values are not adjusted for temporal autocorrelation; spatial q-values are therefore exploratory, not definitive significance claims.
+- Hamed–Rao correction is approximate and is not attempted for short, irregular or unestimable series. The five-year POWER window and Pettitt change-point p-values remain unadjusted for serial dependence.
+- Spatial BY q-values apply only to the eligible pixel family; they are not causal evidence and do not prove that all dependence has been removed.
 - The current spatial window is a local sample, not a region-wide census.
 - The Planetary Computer STAC collection has its own license metadata; source redistribution must follow the current collection terms and NASA LP DAAC citation guidance.
 
 ## Next scientific upgrades
 
-1. Add a temporal-autocorrelation-aware trend test or block-bootstrap inference.
+1. Benchmark the Hamed–Rao implementation against controlled AR(1) simulations and an independent reference implementation; assess sensitivity to lag selection and missing years.
 2. Add an independent precipitation dataset such as GPM IMERG for a more direct precipitation cross-check.
 3. Add quality-screened MODIS land-surface temperature, clearly distinguished from 2 m air temperature.
 4. Expand from a local pixel window to a regional grid and evaluate sensitivity to spatial scale.
@@ -77,3 +78,5 @@ It also makes incomplete coverage visible. Years with insufficient monthly obser
 - NASA MOD13Q1.061 DOI: https://doi.org/10.5067/MODIS/MOD13Q1.061
 - Planetary Computer MODIS 13Q1 collection: https://planetarycomputer.microsoft.com/api/stac/v1/collections/modis-13Q1-061
 - NASA Space Apps challenge: https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/
+- Hamed & Rao (1998), modified Mann–Kendall test: https://doi.org/10.1016/S0022-1694(97)00125-X
+- Collaud Coen et al. (2020), sensitivity of Mann–Kendall/Sen methods to autocorrelation and time granularity: https://doi.org/10.5194/amt-13-6945-2020

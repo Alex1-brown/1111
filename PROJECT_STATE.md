@@ -1,6 +1,6 @@
 # Project state and handoff
 
-Last updated: 2026-11-08
+Last updated: 2026-11-09
 Repository: https://github.com/Alex1-brown/1111
 Branch: main
 Current HEAD: see the main branch for the live revision
@@ -19,7 +19,8 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 - Only MODIS pixel-reliability code 0 enters NDVI analysis.
 - Annual pixel medians require at least 3 quality-screened monthly composites per pixel-year.
 - The pipeline automatically selects the longest contiguous trend period with at least 11 monthly composites/year. The current data snapshot at this location yields a core period of 2003-2023. Incomplete edge years 2001-2002 and 2024-2025 are excluded from long-term trend inference.
-- Per-pixel Sen slopes, nominal 95% Sen-slope confidence intervals from Mann-Kendall variance inversion, and Benjamini-Yekutieli spatial q-values. The intervals and p-values are not adjusted for temporal autocorrelation, so spatial q-values remain exploratory, not definitive significance claims.
+- Per-pixel Sen slopes and nominal 95% intervals. For at least 10 equally spaced observations, Hamed–Rao (1998) modified Mann–Kendall variance correction uses significant autocorrelations of detrended ranks; the same modified variance is used for the Sen interval.
+- Spatial BY q-values are computed only over temporally eligible pixel p-values. Irregular/short/unestimable series retain descriptive slopes and iid reference p-values but have null adjusted p-values and q-values. The correction remains approximate.
 - Annual aggregate NDVI uses a fixed set of pixels present in every year of the core period, preventing changing spatial coverage from driving the overall trend.
 - Pettitt change-point screening and robust MAD anomaly screening for annual series.
 - Monthly NDVI/POWER cross-source anomaly correlations are restricted to the core period overlap; exploratory association only, not validation or causation.
@@ -31,10 +32,10 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 - `science_core/pipeline.py`, `principles.py`: six-stage orchestration.
 - `analysis.py`: NASA POWER validation and descriptive summaries.
 - `statistical_analysis.py`: annual/monthly/seasonal POWER summaries, descriptive OLS and correlations.
-- `trend_analysis.py`: Mann-Kendall, Sen slope and nominal 95% Sen-slope confidence intervals (normal-approximation variance inversion; independent-observation assumption).
+- `trend_analysis.py`: Mann–Kendall, Sen slope, nominal 95% Sen intervals and Hamed–Rao modified variance correction for eligible regular series.
 - `change_point.py`: Pettitt single change-point test.
 - `anomaly_analysis.py`: robust MAD anomaly screening.
-- `spatial_analysis.py`: annual per-pixel NDVI medians, coverage-based core period selection, fixed-panel annual summaries, per-pixel trends and BY q-values.
+- `spatial_analysis.py`: annual per-pixel NDVI medians, coverage-based core period selection, fixed-panel annual summaries, per-pixel trends and BY q-values over eligible tests only.
 - `planetary_modis.py`: STAC search, monthly sampling, COG signing/window reads and quality screening.
 - `cross_source_analysis.py`: monthly NDVI/POWER alignment and anomaly correlations.
 - `visualization.py`: dependency-free SVG charts.
@@ -73,16 +74,16 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 - Run ID: 42390671501
 - URL: https://github.com/Alex1-brown/1111/actions/runs/42390671501
 - Head SHA: aca7cc3d947e8ffdc720b3d34037fcc1caffe46f
-- Status at handoff: in progress.
+- Status: success; artifact ID 13581860343 was downloaded and inspected.
 - This run uses coverage-based 2003-2023 core period selection, fixed-panel annual NDVI, minimum 3 valid composites per pixel-year, and the generated offline HTML report.
 - Run #21 completed successfully; artifact ID 13581860343 is available at https://github.com/Alex1-brown/1111/actions/runs/42390671501/artifacts/13581860343.
-- Cross-source monthly analysis is being decoupled from the annual-trend core period so matched months in incomplete edge years are not discarded.
+- Artifact inspection: 272 monthly MODIS samples; 17 × 17 pixel window; 78,608 raw pixel/composite rows; 43,891 reliability-code-0 observations; 231 pixels in the fixed annual panel; 261 pixel trend estimates; 33 matched NDVI/POWER months over 2021–2023. The artifact predates the Hamed–Rao correction, so its old per-pixel p/q values are a baseline only and must not be presented as corrected inference.
 
 ## Offline tests
 
-- Latest core implementation test run #62: success, 59 tests passed.
-- Subsequent changes after #62 are mainly report text and project documentation; check newest test runs if needed.
-- Live NASA data workflow is manual-only now to conserve GitHub Actions quota. Offline tests still run on pushes.
+- Last completed offline CI run before the current change set: Python tests run #72, success, on commit c43b4dbcc16b42329f1e93b68a332a89cb3e88cc.
+- The current change set adds deterministic AR(1), irregular-spacing, seasonal-strata, spatial-eligibility and HTML-report regression tests. The resulting CI run must be checked after commit.
+- Live NASA data workflow remains manual-only to conserve Actions quota; no new live collection is needed for this statistical change.
 
 ## Scientific caveats
 
@@ -90,18 +91,19 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 - MOD13Q1 NDVI is a vegetation index, not temperature or precipitation.
 - NDVI and POWER have different spatial support.
 - Monthly correlations do not establish causation or validate either source.
-- Mann-Kendall and Pettitt p-values are not adjusted for temporal autocorrelation. Sen-slope intervals are nominal independent-observation intervals and are also not serial-correlation adjusted. BY q-values are therefore exploratory.
+- Hamed–Rao variance correction is approximate and only attempted for at least 10 equally spaced observations with estimable detrended-rank autocorrelation. Short/irregular series are excluded from the spatial BY family.
+- Pettitt p-values remain unadjusted for serial dependence. Five-year POWER annual/seasonal summaries are too short for the Hamed–Rao correction and remain exploratory.
+- BY q-values are conditional on the eligible pixel family; they do not establish causation or guarantee that all dependence is removed.
 - The spatial subset is a local sample, not a region-wide census.
 - Planetary Computer STAC collection license metadata must be followed; do not assume the hosted collection is public-domain simply because the source product is NASA.
 
 ## Immediate next steps
 
-1. Inspect the successful run #21 artifact and offline HTML report; confirm the 2003-2023 annual-trend core period and edge-year coverage.
-2. Keep the cross-source comparison period tied to actual POWER/NDVI date overlap, not the annual-trend core period; only months present in all three sources enter the comparison. This is implemented and covered by an offline regression test.
-3. Enforce identical MODIS subset affine transforms across composite dates before treating pixel indices as a time series; a regression test now rejects shifted grids.
-3. Review annual CSV, per-pixel trend CSV, GeoJSON, coverage chart and cross-source CSV before presenting numerical findings.
-4. Next scientific upgrade: temporal-autocorrelation-aware trend inference or a carefully validated block-bootstrap method.
-5. Prepare a short reproducible demo and final hackathon submission. Avoid further live runs unless a material scientific change is needed.
+1. [Completed 2026-11-09] Download and inspect the successful run #21 artifact, including report JSON, annual summaries, per-pixel CSV/GeoJSON and offline HTML. Treat its pre-correction p/q values as a historical baseline only.
+2. Review the new Hamed–Rao outputs from the next offline test run; verify how many pixels are eligible, how many are excluded for irregular spacing or unestimable residual-rank ACF, and whether q-values are computed only over the eligible family.
+3. Benchmark the Hamed–Rao implementation against controlled AR(1) simulations and an independent reference implementation; test sensitivity to the significant-lag threshold and missing-year patterns.
+4. Add an independent quantitative precipitation product such as GPM IMERG only after confirming open access, product version, units, QA flags, temporal aggregation and licensing. Do not call the current NDVI/POWER correlations validation.
+5. Prepare a short reproducible demo and final hackathon submission. Avoid another live NASA data run unless a material scientific change requires it.
 
 ## Work constraints
 
