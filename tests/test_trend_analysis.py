@@ -47,6 +47,19 @@ class TrendAnalysisTests(unittest.TestCase):
         self.assertFalse(result["serial_correlation_adjusted"])
         self.assertEqual(result["serial_correlation_status"], "irregular_time_spacing")
 
+    def test_exact_linear_trend_does_not_create_rank_acf_from_roundoff(self):
+        points = [
+            (year, 0.2 + 0.01 * (year - 2000))
+            for year in range(2000, 2020)
+        ]
+        result = mann_kendall(points)
+        self.assertFalse(result["serial_correlation_adjusted"])
+        self.assertEqual(
+            result["serial_correlation_status"],
+            "unestimable_detrended_rank_acf",
+        )
+        self.assertIsNone(result["serial_correlation_variance_factor"])
+
     def test_monotonic_decreasing_series(self):
         result = mann_kendall([(2000, 5), (2001, 4), (2002, 3), (2003, 2), (2004, 1)])
         self.assertEqual(result["kendall_s"], -10)

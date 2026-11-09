@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from itertools import combinations, permutations
-from math import ceil, erfc, floor, isfinite, sqrt
+from math import ceil, erfc, floor, isfinite, sqrt, ulp
 from statistics import NormalDist, median
 from typing import Iterable
 
@@ -27,13 +27,23 @@ def _mk_components(values: list[float]) -> tuple[int, float, int]:
 
 
 def _average_ranks(values: list[float]) -> list[float]:
-    """Return one-based average ranks, preserving ties."""
+    """Return one-based average ranks, preserving exact and round-off ties.
+
+    Detrending an exactly linear floating-point series can leave residuals that
+    differ only by a few machine ULPs. Treating those as distinct ranks would
+    manufacture a rank autocorrelation function from numerical noise.
+    """
     order = sorted(range(len(values)), key=lambda index: values[index])
     ranks = [0.0] * len(values)
+    scale = max(1.0, max((abs(value) for value in values), default=0.0))
+    tie_tolerance = 32.0 * ulp(scale)
     start = 0
     while start < len(order):
         end = start + 1
-        while end < len(order) and values[order[end]] == values[order[start]]:
+        while (
+            end < len(order)
+            and abs(values[order[end]] - values[order[start]]) <= tie_tolerance
+        ):
             end += 1
         average_rank = ((start + 1) + end) / 2.0
         for position in range(start, end):
