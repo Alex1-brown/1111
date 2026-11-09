@@ -29,11 +29,11 @@ To check whether the spatial result depended entirely on the Hamed–Rao varianc
 |---|---:|
 | Primary Hamed–Rao | 136 |
 | Moving blocks, 2 years | 137 |
-| Moving blocks, 3 years | 138 |
+| Moving blocks, 3 years | 141 |
 | Moving blocks, 4 years | 146 |
 | Bootstrap significant at all three block lengths | **132** |
 
-The 3-year bootstrap family shared 128 significant pixels with the Hamed–Rao family. Across all three bootstrap block lengths, 132 pixels remained significant; 128 of those also passed the primary Hamed–Rao analysis. The direction was overwhelmingly negative in both families. This agreement is a useful robustness signal, although it does not prove that either method is perfectly calibrated.
+The 3-year bootstrap family shared 127 significant pixels with the Hamed–Rao family. Across all three bootstrap block lengths, 132 pixels remained significant; 127 of those also passed the primary Hamed–Rao analysis (93.4% of the primary significant set). Of the 132 bootstrap-robust pixels, 131 had negative slopes and one had a positive slope. This agreement is a useful robustness signal, although it does not prove that either method is perfectly calibrated.
 
 For the fixed-panel aggregate series, a 5,000-replicate residual moving-block bootstrap produced zero null S statistics as extreme as observed for each block length. The plus-one empirical p-value was therefore 1/5,001 (approximately 0.00020). The bootstrap 95% Sen-slope intervals also excluded zero:
 
