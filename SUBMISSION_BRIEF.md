@@ -53,3 +53,7 @@ The study window is local, not a national map of Tajikistan. MODIS 16-day best-p
 ### AI-use disclosure
 
 AI tools assisted with software implementation, code review, statistical-method review, and documentation. The source observations and derived measurements are retrieved from the cited scientific data providers; they are not AI-generated. No NASA logo, insignia, or NASA-branded visual asset is generated or modified by AI.
+
+### Independent sensitivity check
+
+The current Dushanbe run is accompanied by a residual circular moving-block bootstrap check using 2-, 3-, and 4-year blocks, with Benjamini–Yekutieli correction within each eligible pixel family. See [VALIDATION_REPORT.md](VALIDATION_REPORT.md). This is a sensitivity analysis, not an independent satellite validation or causal attribution.

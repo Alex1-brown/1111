@@ -1,0 +1,60 @@
+name: Validate NASA artifact with block bootstrap
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Completed NASA live-data workflow run ID
+        required: true
+        type: string
+      artifact_name:
+        description: NASA data artifact name from that run
+        required: true
+        default: nasa-real-data-22
+        type: string
+  push:
+    branches:
+      - work/block-bootstrap-validation-2026-11-09
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  bootstrap-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Download the completed NASA data artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ github.event.inputs.artifact_name || 'nasa-real-data-22' }}
+          repository: Alex1-brown/1111
+          run-id: ${{ github.event.inputs.source_run_id || '42662224195' }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: nasa-real-data-22
+      - name: Run offline block-bootstrap sensitivity analysis
+        run: |
+          python -m science_core.bootstrap_validation nasa-real-data-22 \
+            --spatial-replicates 5000 \
+            --fixed-panel-replicates 5000 \
+            --block-lengths 2,3,4
+      - name: Upload independent validation results
+        uses: actions/upload-artifact@v4
+        with:
+          name: ndvi-block-bootstrap-validation
+          path: |
+            nasa-real-data-22/modis_ndvi/ndvi_block_bootstrap_validation.csv
+            nasa-real-data-22/modis_ndvi/ndvi_block_bootstrap_validation.json
+          if-no-files-found: error
+          retention-days: 30
