@@ -6,7 +6,7 @@
 
 ### The question
 
-How has vegetation greenness changed across a local 4 km × 4 km study window in Tajikistan, where are the strongest pixel-level changes, and how much confidence can be placed in those signals?
+How has vegetation greenness changed across a local 4 km × 4 km study window centred on Dushanbe, Tajikistan (38.5598° N, 68.7870° E), where are the strongest pixel-level changes, and how much confidence can be placed in those signals?
 
 ### What the tool does
 
