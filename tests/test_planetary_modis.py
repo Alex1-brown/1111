@@ -70,6 +70,31 @@ class PlanetaryModisTests(unittest.TestCase):
         self.assertTrue(_geometry_contains(geometry, 68.5, 38.5))
         self.assertFalse(_geometry_contains(geometry, 70, 40))
 
+    def test_polygon_hole_excludes_point_from_footprint(self):
+        geometry = {
+            "type": "Polygon",
+            "coordinates": [
+                [[68, 38], [70, 38], [70, 40], [68, 40], [68, 38]],
+                [[68.4, 38.4], [68.6, 38.4], [68.6, 38.6], [68.4, 38.6], [68.4, 38.4]],
+            ],
+        }
+        self.assertTrue(_geometry_contains(geometry, 68.2, 38.2))
+        self.assertFalse(_geometry_contains(geometry, 68.5, 38.5))
+
+    def test_multipolygon_checks_holes_and_other_polygon_parts(self):
+        geometry = {
+            "type": "MultiPolygon",
+            "coordinates": [
+                [
+                    [[68, 38], [70, 38], [70, 40], [68, 40], [68, 38]],
+                    [[68.4, 38.4], [68.6, 38.4], [68.6, 38.6], [68.4, 38.6], [68.4, 38.4]],
+                ],
+                [[[71, 38], [72, 38], [72, 39], [71, 39], [71, 38]]],
+            ],
+        }
+        self.assertFalse(_geometry_contains(geometry, 68.5, 38.5))
+        self.assertTrue(_geometry_contains(geometry, 71.5, 38.5))
+
     def test_monthly_sampling_selects_composite_nearest_to_midmonth(self):
         items = [
             {"id": "a", "__composite_date": "2020-01-01"},
