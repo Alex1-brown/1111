@@ -99,3 +99,7 @@ See [SUBMISSION_BRIEF.md](SUBMISSION_BRIEF.md) for the challenge alignment, data
 ## Data attribution and licensing
 
 See [DATA_AND_SOFTWARE_LICENSES.md](DATA_AND_SOFTWARE_LICENSES.md) for NASA data citations, source reuse notes, software licensing, and AI-use disclosure. The project code is MIT-licensed; NASA data must retain the source-specific citations and reuse terms.
+
+## Statistical robustness check
+
+After downloading and extracting a live-data artifact, run the offline residual moving-block bootstrap sensitivity analysis with `python -m science_core.bootstrap_validation artifacts`. See [VALIDATION_REPORT.md](VALIDATION_REPORT.md) for the current Dushanbe result and its limitations.
