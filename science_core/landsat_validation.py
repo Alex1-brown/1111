@@ -20,6 +20,7 @@ from .planetary_modis import (
     _sign_href,
     _to_dataset_xy,
 )
+from .bootstrap_validation import moving_block_bootstrap_mk
 from .trend_analysis import mann_kendall
 
 LANDSAT_COLLECTION = "landsat-c2-l2"
@@ -334,6 +335,17 @@ def validate_landsat_against_modis(
     modis_values = [float(item["modis_july_median_ndvi"]) for item in records]
     common = list(zip(years, landsat_values))
     landsat_trend = mann_kendall([(float(year), value) for year, value in common])
+    landsat_bootstrap = {
+        str(length): moving_block_bootstrap_mk(
+            np.asarray(years, dtype=float),
+            np.asarray(landsat_values, dtype=float),
+            block_length=length,
+            replicates=5000,
+            seed=20261109 + length * 100000,
+            slope_interval=True,
+        )
+        for length in (2, 3, 4)
+    }
 
     output_dir = root / "modis_ndvi"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -363,6 +375,7 @@ def validate_landsat_against_modis(
         "pearson_r_landsat_vs_modis_july": _pearson(landsat_values, modis_values),
         "spearman_rho_landsat_vs_modis_july": _spearman(landsat_values, modis_values),
         "landsat_sen_mann_kendall": landsat_trend,
+        "landsat_residual_block_bootstrap": landsat_bootstrap,
         "artifact_csv": str(csv_path),
         "interpretation_warning": (
             "Cross-sensor consistency check only. Landsat 30 m and MODIS 250 m have different "
