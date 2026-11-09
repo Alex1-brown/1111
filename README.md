@@ -103,3 +103,7 @@ See [DATA_AND_SOFTWARE_LICENSES.md](DATA_AND_SOFTWARE_LICENSES.md) for NASA data
 ## Statistical robustness check
 
 After downloading and extracting a live-data artifact, run the offline residual moving-block bootstrap sensitivity analysis with `python -m science_core.bootstrap_validation artifacts`. See [VALIDATION_REPORT.md](VALIDATION_REPORT.md) for the current Dushanbe result and its limitations.
+
+## Independent Landsat cross-check
+
+The validation workflow also compares summer Landsat 8/9 Collection 2 Level-2 NDVI with July MODIS NDVI in the same Dushanbe window. Run `python -m science_core.landsat_validation artifacts` after extracting the NASA artifact. See [VALIDATION_REPORT.md](VALIDATION_REPORT.md) for the 2013–2023 cross-sensor results and limitations.

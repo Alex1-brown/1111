@@ -49,7 +49,7 @@ NASA POWER contributed 1,826 paired daily records for 2021–2025. The five annu
 
 ## Reproduction
 
-After extracting the NASA Actions artifact. The current sensitivity run is [GitHub Actions validation #24](https://github.com/Alex1-brown/1111/actions/runs/42664255402):
+After extracting the NASA Actions artifact. The current sensitivity run is [GitHub Actions validation #25](https://github.com/Alex1-brown/1111/actions/runs/42665439281):
 
 ```bash
 python -m pip install -r requirements.txt
@@ -57,6 +57,27 @@ python -m science_core.bootstrap_validation artifacts --spatial-replicates 5000 
 ```
 
 The script writes `ndvi_block_bootstrap_validation.csv` and `ndvi_block_bootstrap_validation.json` under `artifacts/modis_ndvi/`.
+
+
+## Independent cross-sensor check: Landsat 8/9
+
+A separate 2013–2023 comparison used USGS Landsat 8/9 Collection 2 Level-2 Surface Reflectance in the same 4 km × 4 km window. The Planetary Computer STAC search returned 997 candidate items. One summer scene per year, nearest to July 15 within June 1–September 30 and with scene cloud cover no greater than 40%, was selected. All 11 years were represented and no selected scene failed pixel-quality checks.
+
+Landsat surface reflectance was converted using the USGS Collection 2 scale factor 0.0000275 and offset −0.2. QA_PIXEL fill, dilated-cloud, cirrus, cloud, cloud-shadow, and snow flags were excluded; pixels with any QA_RADSAT flag were also excluded. Each scene retained 17,681–17,689 clear pixels in the 17,689-pixel local window.
+
+The Landsat summer median NDVI declined from 0.25462 in 2013 to 0.21289 in 2023 (−16.4%). Its Sen slope was **−0.004024 NDVI/year**, Kendall tau was **−0.60**, and Hamed–Rao Mann–Kendall p = **0.01273**. The Hamed–Rao variance factor was 1.0 with no detrended-rank ACF lags selected; the p-value is therefore the normal-approximation result without a variance inflation/deflation.
+
+A 5,000-replicate residual circular moving-block bootstrap also supported a negative Landsat trend:
+
+| Block length | Bootstrap p-value | 95% Sen-slope interval (NDVI/year) |
+|---|---:|---|
+| 2 years | 0.00400 | [−0.005391, −0.002811] |
+| 3 years | 0.00060 | [−0.005190, −0.002807] |
+| 4 years | 0.00020 | [−0.005084, −0.003115] |
+
+Across the 11 matched years, Landsat summer median NDVI and July MODIS median NDVI had Pearson r = **0.512** and Spearman rho = **0.473**. Both sensors show a negative 2013–2023 direction, but agreement is moderate rather than exact. Their pixel sizes (30 m vs 250 m), spectral responses, compositing, and acquisition dates differ. This is an independent-sensor consistency check, not a ground-truth validation or proof of cause.
+
+USGS product reference: [Landsat 8–9 OLI/TIRS Collection 2 Level-2 DOI](https://doi.org/10.5066/P9OGBGM6). USGS documents the surface-reflectance scale/offset and states that Landsat products have no restrictions on use when properly cited. See [USGS surface-reflectance guidance](https://www.usgs.gov/landsat-missions/landsat-collection-2-surface-reflectance) and [QA band definitions](https://www.usgs.gov/landsat-missions/landsat-collection-2-quality-assessment-bands).
 
 ## Limitations
 
