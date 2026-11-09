@@ -95,3 +95,7 @@ The project records product version, source, DOI, units, QA policy and analysis 
 ## Competition submission and AI-use disclosure
 
 See [SUBMISSION_BRIEF.md](SUBMISSION_BRIEF.md) for the challenge alignment, data sources, methods, limitations, reproducibility instructions, and AI-use disclosure. AI tools assisted with software implementation, review, and documentation; NASA observations are retrieved from the cited providers and are not AI-generated. No NASA branding or insignia is AI-generated or modified.
+
+## Data attribution and licensing
+
+See [DATA_AND_SOFTWARE_LICENSES.md](DATA_AND_SOFTWARE_LICENSES.md) for NASA data citations, source reuse notes, software licensing, and AI-use disclosure. The project code is MIT-licensed; NASA data must retain the source-specific citations and reuse terms.
