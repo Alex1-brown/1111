@@ -74,13 +74,29 @@ def _point_in_ring(lon: float, lat: float, ring: list[list[float]]) -> bool:
     return inside
 
 
+def _polygon_contains(lon: float, lat: float, rings: list[object]) -> bool:
+    """Apply GeoJSON Polygon semantics: inside the shell and outside every hole."""
+    if not rings or not isinstance(rings[0], list):
+        return False
+    if not _point_in_ring(lon, lat, rings[0]):
+        return False
+    return not any(
+        isinstance(hole, list) and _point_in_ring(lon, lat, hole)
+        for hole in rings[1:]
+    )
+
+
 def _geometry_contains(geometry: dict[str, object], lon: float, lat: float) -> bool:
+    """Return whether a point is in a GeoJSON Polygon/MultiPolygon surface."""
     kind = geometry.get("type")
     coords = geometry.get("coordinates")
     if kind == "Polygon" and isinstance(coords, list):
-        return bool(coords) and _point_in_ring(lon, lat, coords[0])
+        return _polygon_contains(lon, lat, coords)
     if kind == "MultiPolygon" and isinstance(coords, list):
-        return any(poly and _point_in_ring(lon, lat, poly[0]) for poly in coords)
+        return any(
+            isinstance(polygon, list) and _polygon_contains(lon, lat, polygon)
+            for polygon in coords
+        )
     return False
 
 
