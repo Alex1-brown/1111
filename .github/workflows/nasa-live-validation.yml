@@ -3,6 +3,9 @@ name: NASA live data collection
 # Live NASA data collection is manual to avoid consuming Actions quota on code-only commits.
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - work/live-validation-2026-11-09
 
 permissions:
   contents: read
