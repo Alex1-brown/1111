@@ -2,6 +2,16 @@ name: Validate NASA artifact with block bootstrap
 
 on:
   workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Completed NASA live-data workflow run ID
+        required: true
+        type: string
+      artifact_name:
+        description: NASA data artifact name from that run
+        required: true
+        default: nasa-real-data-22
+        type: string
   push:
     branches:
       - work/block-bootstrap-validation-2026-11-09
@@ -28,9 +38,9 @@ jobs:
       - name: Download the completed NASA data artifact
         uses: actions/download-artifact@v4
         with:
-          name: nasa-real-data-22
+          name: ${{ github.event.inputs.artifact_name || 'nasa-real-data-22' }}
           repository: Alex1-brown/1111
-          run-id: 42662224195
+          run-id: ${{ github.event.inputs.source_run_id || '42662224195' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: nasa-real-data-22
       - name: Run offline block-bootstrap sensitivity analysis

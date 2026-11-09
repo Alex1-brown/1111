@@ -49,7 +49,7 @@ NASA POWER contributed 1,826 paired daily records for 2021–2025. The five annu
 
 ## Reproduction
 
-After extracting the NASA Actions artifact:
+After extracting the NASA Actions artifact. The current sensitivity run is [GitHub Actions validation #24](https://github.com/Alex1-brown/1111/actions/runs/42664255402):
 
 ```bash
 python -m pip install -r requirements.txt
