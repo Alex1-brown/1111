@@ -61,6 +61,8 @@ The script writes `ndvi_block_bootstrap_validation.csv` and `ndvi_block_bootstra
 
 ## Independent cross-sensor check: Landsat 8/9
 
+**Quality-screening update:** the numerical Landsat results below come from the first live run, which applied QA_PIXEL and QA_RADSAT but did not yet screen the separate SR_QA_AEROSOL band. A code review against the USGS QA specification identified that omission. The current validation branch now also rejects aerosol-QA fill pixels and pixels with the high-aerosol level (bits 6–7 = 3). The stricter code has passed its offline unit tests, but the live Landsat workflow has not yet been rerun with this additional mask. Therefore, the Landsat counts, trend statistics, and cross-sensor correlations below are **provisional pre-aerosol-screen results**, not the final strict-QA result.
+
 A separate 2013–2023 comparison used USGS Landsat 8/9 Collection 2 Level-2 Surface Reflectance in the same 4 km × 4 km window. The Planetary Computer STAC search returned 997 candidate items. One summer scene per year, nearest to July 15 within June 1–September 30 and with scene cloud cover no greater than 40%, was selected. All 11 years were represented and no selected scene failed pixel-quality checks.
 
 Landsat surface reflectance was converted using the USGS Collection 2 scale factor 0.0000275 and offset −0.2. QA_PIXEL fill, dilated-cloud, cirrus, cloud, cloud-shadow, and snow flags were excluded; pixels with any QA_RADSAT flag were also excluded. Each scene retained 17,681–17,689 clear pixels in the 17,689-pixel local window.
