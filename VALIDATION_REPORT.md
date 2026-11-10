@@ -75,7 +75,23 @@ A 5,000-replicate residual circular moving-block bootstrap also supported a nega
 | 3 years | 0.00060 | [−0.005190, −0.002807] |
 | 4 years | 0.00020 | [−0.005084, −0.003115] |
 
-Across the 11 matched years, Landsat summer median NDVI and July MODIS median NDVI had Pearson r = **0.512** and Spearman rho = **0.473**. Both sensors show a negative 2013–2023 direction, but agreement is moderate rather than exact. Their pixel sizes (30 m vs 250 m), spectral responses, compositing, and acquisition dates differ. This is an independent-sensor consistency check, not a ground-truth validation or proof of cause.
+The comparison pairs each Landsat scene with the nearest same-year quality-screened MOD13Q1 composite, rather than pooling all July observations. The measured MODIS-minus-Landsat date offsets were:
+
+| Year | Landsat date | MODIS composite date | MODIS − Landsat (days) |
+|---|---|---|---:|
+| 2013 | 2013-07-17 | 2013-07-12 | −5 |
+| 2014 | 2014-07-11 | 2014-07-12 | +1 |
+| 2015 | 2015-07-07 | 2015-07-12 | +5 |
+| 2016 | 2016-07-16 | 2016-07-11 | −5 |
+| 2017 | 2017-07-19 | 2017-07-12 | −7 |
+| 2018 | 2018-07-15 | 2018-07-12 | −3 |
+| 2019 | 2019-07-18 | 2019-07-12 | −6 |
+| 2020 | 2020-07-04 | 2020-07-11 | +7 |
+| 2021 | 2021-07-14 | 2021-07-12 | −2 |
+| 2022 | 2022-07-18 | 2022-07-12 | −6 |
+| 2023 | 2023-07-13 | 2023-07-12 | −1 |
+
+The absolute temporal mismatch was **1–7 days** for all 11 years. The updated code now records both acquisition dates and the signed offset, and rejects a pair if the nearest same-year MODIS composite is more than 24 days away. With these observed dates, the matched values are the same July composites used in the original calculation: Pearson r = **0.512** and Spearman rho = **0.473**. Both sensors show a negative 2013–2023 direction, but agreement is moderate rather than exact. Their pixel sizes (30 m vs 250 m), spectral responses, compositing, and acquisition dates differ. MODIS is a 16-day composite, so its composite date is not an exact instantaneous observation. This is an independent-sensor consistency check, not a ground-truth validation or proof of cause.
 
 USGS product reference: [Landsat 8–9 OLI/TIRS Collection 2 Level-2 DOI](https://doi.org/10.5066/P9OGBGM6). USGS documents the surface-reflectance scale/offset and states that Landsat products have no restrictions on use when properly cited. See [USGS surface-reflectance guidance](https://www.usgs.gov/landsat-missions/landsat-collection-2-surface-reflectance) and [QA band definitions](https://www.usgs.gov/landsat-missions/landsat-collection-2-quality-assessment-bands).
 
