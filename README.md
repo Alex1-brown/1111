@@ -18,7 +18,7 @@ python -m science_core.cli --image-count 60 --minimum-images 50
 The CLI writes `artifacts/nasa_power.json`, `artifacts/report.json`, downloaded PNG files under `artifacts/modis_series/`, and (unless `--skip-ndvi` is set) quantitative MODIS NDVI data, annual summaries, and spatial trend GeoJSON under `artifacts/modis_ndvi/`.
 
 ## GitHub Actions
-The **NASA live data collection** workflow runs when its workflow file is first added to `main`, and can later be started manually from the Actions tab. It uploads the report and imagery as a downloadable artifact for 14 days. The separate Python tests workflow remains an offline unit-test job.
+The **NASA live data collection** workflow is manual-only (`workflow_dispatch`) to avoid consuming Actions quota on code-only commits. Start it from the Actions tab when a fresh dataset is needed. It uploads the report and quantitative MODIS/POWER outputs as a downloadable artifact for 14 days. The separate Python tests workflow runs offline on code pushes and pull requests.
 
 ## Important scientific limitations
 - NASA POWER values are gridded analysis/reanalysis-derived estimates, not direct measurements from a local weather station.
