@@ -41,7 +41,8 @@ class LandsatValidationTests(unittest.TestCase):
         nir = np.array([[25000, 25000]], dtype=np.uint16)
         qa = np.array([[0, 1 << 3]], dtype=np.uint16)
         saturation = np.zeros((1, 2), dtype=np.uint16)
-        ndvi, valid = ndvi_from_landsat_arrays(red, nir, qa, saturation)
+        aerosol = np.zeros((1, 2), dtype=np.uint16)
+        ndvi, valid = ndvi_from_landsat_arrays(red, nir, qa, saturation, aerosol)
         expected_red = 15000 * 0.0000275 - 0.2
         expected_nir = 25000 * 0.0000275 - 0.2
         expected = (expected_nir - expected_red) / (expected_nir + expected_red)
@@ -55,7 +56,8 @@ class LandsatValidationTests(unittest.TestCase):
         nir = np.full((1, 6), 25000, dtype=np.uint16)
         qa = np.array([[1 << bit for bit in range(6)]], dtype=np.uint16)
         saturation = np.zeros((1, 6), dtype=np.uint16)
-        _, valid = ndvi_from_landsat_arrays(red, nir, qa, saturation)
+        aerosol = np.zeros((1, 6), dtype=np.uint16)
+        _, valid = ndvi_from_landsat_arrays(red, nir, qa, saturation, aerosol)
         self.assertEqual(int(valid.sum()), 0)
         self.assertEqual(INVALID_QA_PIXEL_BITS, 63)
 
@@ -64,8 +66,19 @@ class LandsatValidationTests(unittest.TestCase):
         nir = np.array([[25000, 25000, 25000]], dtype=np.uint16)
         qa = np.zeros((1, 3), dtype=np.uint16)
         saturation = np.array([[0, 1, 0]], dtype=np.uint16)
-        _, valid = ndvi_from_landsat_arrays(red, nir, qa, saturation)
+        aerosol = np.zeros((1, 3), dtype=np.uint16)
+        _, valid = ndvi_from_landsat_arrays(red, nir, qa, saturation, aerosol)
         self.assertEqual(int(valid.sum()), 1)
+
+    def test_high_aerosol_and_aerosol_fill_are_excluded(self):
+        red = np.full((1, 4), 15000, dtype=np.uint16)
+        nir = np.full((1, 4), 25000, dtype=np.uint16)
+        qa = np.zeros((1, 4), dtype=np.uint16)
+        saturation = np.zeros((1, 4), dtype=np.uint16)
+        # 0 = climatology, 01 = low, 11 = high, bit 0 = fill.
+        aerosol = np.array([[0, 1 << 6, 3 << 6, 1]], dtype=np.uint16)
+        _, valid = ndvi_from_landsat_arrays(red, nir, qa, saturation, aerosol)
+        self.assertEqual(valid.tolist(), [[True, True, False, False]])
 
     def test_average_ranks_and_spearman_handle_ties(self):
         self.assertEqual(_average_ranks([2.0, 1.0, 1.0]), [3.0, 1.5, 1.5])
