@@ -10,6 +10,7 @@ from science_core.landsat_validation import (
     _spearman,
     ndvi_from_landsat_arrays,
     _nearest_modis_composite,
+    _landsat_bootstrap_eligibility,
 )
 
 
@@ -79,6 +80,21 @@ class LandsatValidationTests(unittest.TestCase):
         aerosol = np.array([[0, 1 << 6, 3 << 6, 1]], dtype=np.uint16)
         _, valid = ndvi_from_landsat_arrays(red, nir, qa, saturation, aerosol)
         self.assertEqual(valid.tolist(), [[True, True, False, False]])
+
+    def test_landsat_bootstrap_requires_ten_consecutive_annual_observations(self):
+        eligible, reason = _landsat_bootstrap_eligibility(list(range(2013, 2023)))
+        self.assertTrue(eligible)
+        self.assertEqual(reason, "eligible")
+
+        eligible, reason = _landsat_bootstrap_eligibility(list(range(2013, 2022)))
+        self.assertFalse(eligible)
+        self.assertIn("at_least_10", reason)
+
+    def test_landsat_bootstrap_rejects_gaps_even_with_ten_years(self):
+        years = [2013, 2014, 2015, 2016, 2018, 2019, 2020, 2021, 2022, 2023]
+        eligible, reason = _landsat_bootstrap_eligibility(years)
+        self.assertFalse(eligible)
+        self.assertEqual(reason, "requires_unique_consecutive_annual_observations")
 
     def test_average_ranks_and_spearman_handle_ties(self):
         self.assertEqual(_average_ranks([2.0, 1.0, 1.0]), [3.0, 1.5, 1.5])

@@ -1,4 +1,4 @@
-name: Validate NASA artifact with block bootstrap
+name: Validate NASA artifact with bootstrap and Landsat cross-check
 
 on:
   workflow_dispatch:

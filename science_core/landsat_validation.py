@@ -24,6 +24,7 @@ from .bootstrap_validation import moving_block_bootstrap_mk
 from .trend_analysis import mann_kendall
 
 LANDSAT_COLLECTION = "landsat-c2-l2"
+LANDSAT_DOI = "https://doi.org/10.5066/P9OGBGM6"
 LANDSAT_ASSETS = ("red", "nir08", "qa_pixel", "qa_radsat", "qa_aerosol")
 SR_SCALE = 0.0000275
 SR_OFFSET = -0.2
@@ -293,6 +294,17 @@ def _nearest_modis_composite(
     return nearest, float(np.median(values)), signed_gap
 
 
+def _landsat_bootstrap_eligibility(years: list[int]) -> tuple[bool, str]:
+    """Check the exact sample-size and spacing preconditions of the block bootstrap."""
+    if len(years) < 10:
+        return False, f"requires_at_least_10_annual_observations; found {len(years)}"
+    if len(set(years)) != len(years) or any(
+        right - left != 1 for left, right in zip(years, years[1:])
+    ):
+        return False, "requires_unique_consecutive_annual_observations"
+    return True, "eligible"
+
+
 def validate_landsat_against_modis(
     artifact_dir: Path,
     *,
@@ -354,9 +366,18 @@ def validate_landsat_against_modis(
                 raise LandsatValidationError(
                     f"Only {len(modis_values)} quality-screened MODIS pixels for {modis_date}."
                 )
+            self_link = next(
+                (link.get("href") for link in item.get("links", []) if link.get("rel") == "self"),
+                None,
+            )
             records.append({
                 "year": year,
+                "landsat_scene_id": str(item.get("id", "")),
+                "landsat_collection_id": str(item.get("collection", LANDSAT_COLLECTION)),
+                "landsat_stac_item_url": self_link,
                 "landsat_date": item["__date"],
+                "landsat_crs": str(result["crs"]),
+                "landsat_window_transform": json.dumps(result["window_transform"]),
                 "modis_composite_date": modis_date.isoformat(),
                 "sensor_date_difference_days": int(signed_gap),
                 "platform": item.get("properties", {}).get("platform"),
@@ -384,17 +405,31 @@ def validate_landsat_against_modis(
     modis_values = [float(item["modis_nearest_composite_median_ndvi"]) for item in records]
     common = list(zip(years, landsat_values))
     landsat_trend = mann_kendall([(float(year), value) for year, value in common])
-    landsat_bootstrap = {
-        str(length): moving_block_bootstrap_mk(
-            np.asarray(years, dtype=float),
-            np.asarray(landsat_values, dtype=float),
-            block_length=length,
-            replicates=5000,
-            seed=20261109 + length * 100000,
-            slope_interval=True,
-        )
-        for length in (2, 3, 4)
-    }
+    bootstrap_eligible, bootstrap_reason = _landsat_bootstrap_eligibility(years)
+    if bootstrap_eligible:
+        landsat_bootstrap = {
+            "status": "computed",
+            "n": len(years),
+            "results": {
+                str(length): moving_block_bootstrap_mk(
+                    np.asarray(years, dtype=float),
+                    np.asarray(landsat_values, dtype=float),
+                    block_length=length,
+                    replicates=5000,
+                    seed=20261109 + length * 100000,
+                    slope_interval=True,
+                )
+                for length in (2, 3, 4)
+            },
+        }
+    else:
+        landsat_bootstrap = {
+            "status": "not_run",
+            "n": len(years),
+            "reason": bootstrap_reason,
+            "required_conditions": "at least 10 unique consecutive annual observations",
+            "results": {},
+        }
 
     output_dir = root / "modis_ndvi"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -408,7 +443,40 @@ def validate_landsat_against_modis(
     summary = {
         "status": "success",
         "source": "USGS Landsat 8/9 Collection 2 Level-2 Surface Reflectance, hosted as COGs by Microsoft Planetary Computer",
+        "dataset_doi": LANDSAT_DOI,
+        "stac_endpoint": STAC_API,
         "collection_id": LANDSAT_COLLECTION,
+        "bands": {
+            "red": "SR_B4 (STAC asset: red)",
+            "near_infrared": "SR_B5 (STAC asset: nir08)",
+            "qa_pixel": "QA_PIXEL",
+            "qa_radsat": "QA_RADSAT",
+            "qa_aerosol": "SR_QA_AEROSOL",
+        },
+        "surface_reflectance": {
+            "units": "unitless reflectance",
+            "conversion": "reflectance = DN * 0.0000275 - 0.2",
+            "scale": SR_SCALE,
+            "offset": SR_OFFSET,
+            "project_accepted_dn_range_inclusive": [SR_MIN_DN, SR_MAX_DN],
+            "accepted_range_rationale": "Project filter retaining scaled reflectance approximately within 0 to 1; narrower than the full USGS stored-DN range.",
+            "ndvi_formula": "(NIR - red) / (NIR + red)",
+        },
+        "quality_policy": {
+            "qa_pixel_excluded_bits": {
+                "0": "fill",
+                "1": "dilated cloud",
+                "2": "cirrus",
+                "3": "cloud",
+                "4": "cloud shadow",
+                "5": "snow",
+            },
+            "qa_radsat": "exclude any pixel with a nonzero QA_RADSAT value (conservative across all bands and terrain occlusion)",
+            "sr_qa_aerosol": "exclude fill (bit 0) and high aerosol level (bits 6-7 = 3); invalid-retrieval and interpolated flags are not additionally screened",
+            "scene_cloud_cover_max_percent": maximum_cloud_cover,
+            "minimum_clear_pixels_per_scene": minimum_valid_pixels,
+            "water_pixels": "not excluded by the current pixel mask; interpret this cross-check as land-surface NDVI including any retained water pixels",
+        },
         "study_window": {
             "latitude": latitude, "longitude": longitude, "radius_km": radius_km,
             "description": "Same local 4 km x 4 km Dushanbe window as the MODIS analysis",
@@ -431,8 +499,9 @@ def validate_landsat_against_modis(
         "artifact_csv": str(csv_path),
         "interpretation_warning": (
             "Cross-sensor consistency check only. Landsat 30 m and MODIS 250 m have different "
-            "spatial support, spectral response, compositing, acquisition dates, and processing. "
-            "One summer scene per year does not establish a long-term trend or causal explanation."
+            "pixel footprints, spatial support, spectral response, compositing, acquisition dates, and processing. "
+            "The windows share a nominal centre and radius but are not pixel-identical; water pixels are not "
+            "currently excluded. One summer scene per year does not establish a long-term trend or causal explanation."
         ),
     }
     json_path = output_dir / "landsat_modis_summer_crosscheck.json"

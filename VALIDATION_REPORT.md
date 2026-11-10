@@ -59,6 +59,14 @@ python -m science_core.bootstrap_validation artifacts --spatial-replicates 5000 
 The script writes `ndvi_block_bootstrap_validation.csv` and `ndvi_block_bootstrap_validation.json` under `artifacts/modis_ndvi/`.
 
 
+## Landsat quality and provenance fields
+
+The Landsat CSV now records each selected STAC item ID and self URL, collection ID, acquisition date, source CRS, and raster window transform. Its JSON summary records the USGS DOI, Planetary Computer STAC endpoint, source band names, unitless surface-reflectance scaling, NDVI equation, and the exact QA policy. The project-level DN filter is 7,273–43,636, corresponding approximately to scaled reflectance 0–1; this is a conservative project filter, not the full USGS stored-DN valid range.
+
+The current mask rejects QA_PIXEL fill, dilated cloud, cirrus, cloud, cloud shadow, and snow; any nonzero QA_RADSAT value; and SR_QA_AEROSOL fill or high-aerosol pixels. It does not additionally reject invalid/interpolated aerosol retrieval flags or water pixels. The Landsat and MODIS windows share a nominal centre and radius but their raster pixel footprints are not identical. These choices are emitted as provenance/limitations rather than being hidden.
+
+The Landsat residual moving-block bootstrap is only run when there are at least ten unique, consecutive annual observations, matching the bootstrap implementation's preconditions. With fewer years or any annual gap, the JSON now reports `status: not_run` and the exact reason; it does not fail the entire cross-sensor comparison or fabricate a bootstrap result.
+
 ## Independent cross-sensor check: Landsat 8/9
 
 **Quality-screening update:** the numerical Landsat results below come from the first live run, which applied QA_PIXEL and QA_RADSAT but did not yet screen the separate SR_QA_AEROSOL band. A code review against the USGS QA specification identified that omission. The current validation branch now also rejects aerosol-QA fill pixels and pixels with the high-aerosol level (bits 6–7 = 3). The stricter code has passed its offline unit tests, but the live Landsat workflow has not yet been rerun with this additional mask. Therefore, the Landsat counts, trend statistics, and cross-sensor correlations below are **provisional pre-aerosol-screen results**, not the final strict-QA result.
