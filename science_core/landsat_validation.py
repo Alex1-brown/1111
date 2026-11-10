@@ -24,7 +24,7 @@ from .bootstrap_validation import moving_block_bootstrap_mk
 from .trend_analysis import mann_kendall
 
 LANDSAT_COLLECTION = "landsat-c2-l2"
-LANDSAT_ASSETS = ("red", "nir08", "qa_pixel", "qa_radsat")
+LANDSAT_ASSETS = ("red", "nir08", "qa_pixel", "qa_radsat", "qa_aerosol")
 SR_SCALE = 0.0000275
 SR_OFFSET = -0.2
 SR_MIN_DN = 7273
@@ -41,13 +41,15 @@ def ndvi_from_landsat_arrays(
     nir_dn: np.ndarray,
     qa_pixel: np.ndarray,
     qa_radsat: np.ndarray,
+    qa_aerosol: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Convert Landsat C2 L2 SR DNs to NDVI and return the strict clear-pixel mask."""
+    """Convert Landsat C2 L2 SR DNs and apply cloud, saturation, and aerosol QA."""
     red = np.asarray(red_dn, dtype=np.float64)
     nir = np.asarray(nir_dn, dtype=np.float64)
     qa = np.asarray(qa_pixel, dtype=np.uint16)
     saturation = np.asarray(qa_radsat, dtype=np.uint16)
-    if not (red.shape == nir.shape == qa.shape == saturation.shape):
+    aerosol = np.asarray(qa_aerosol, dtype=np.uint16)
+    if not (red.shape == nir.shape == qa.shape == saturation.shape == aerosol.shape):
         raise ValueError("Landsat red, NIR, QA_PIXEL, and QA_RADSAT arrays must share one grid.")
 
     valid = (
@@ -55,6 +57,10 @@ def ndvi_from_landsat_arrays(
         & (nir >= SR_MIN_DN) & (nir <= SR_MAX_DN)
         & ((qa & INVALID_QA_PIXEL_BITS) == 0)
         & (saturation == 0)
+        # SR_QA_AEROSOL bit 0 marks fill; bits 6-7 encode aerosol level,
+        # where 3 means high aerosol (USGS recommends avoiding high-aerosol pixels).
+        & ((aerosol & 1) == 0)
+        & (((aerosol >> 6) & 0b11) != 0b11)
     )
     red_reflectance = red * SR_SCALE + SR_OFFSET
     nir_reflectance = nir * SR_SCALE + SR_OFFSET
@@ -206,7 +212,7 @@ def _read_scene_ndvi(
             shape = red.shape
 
         arrays = {}
-        for name in ("nir08", "qa_pixel", "qa_radsat"):
+        for name in ("nir08", "qa_pixel", "qa_radsat", "qa_aerosol"):
             with rasterio.open(urls[name]) as dataset:
                 if dataset.crs != crs or dataset.transform != red_ds.transform:
                     raise LandsatValidationError(f"Landsat {name} grid does not align with red band.")
@@ -215,7 +221,9 @@ def _read_scene_ndvi(
                     raise LandsatValidationError(f"Landsat {name} window shape differs from red band.")
                 arrays[name] = values
 
-    ndvi, valid = ndvi_from_landsat_arrays(red, arrays["nir08"], arrays["qa_pixel"], arrays["qa_radsat"])
+    ndvi, valid = ndvi_from_landsat_arrays(
+        red, arrays["nir08"], arrays["qa_pixel"], arrays["qa_radsat"], arrays["qa_aerosol"]
+    )
     count = int(valid.sum())
     if count < minimum_valid_pixels:
         raise LandsatValidationError(
