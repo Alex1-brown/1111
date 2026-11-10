@@ -50,7 +50,7 @@ def ndvi_from_landsat_arrays(
     saturation = np.asarray(qa_radsat, dtype=np.uint16)
     aerosol = np.asarray(qa_aerosol, dtype=np.uint16)
     if not (red.shape == nir.shape == qa.shape == saturation.shape == aerosol.shape):
-        raise ValueError("Landsat red, NIR, QA_PIXEL, and QA_RADSAT arrays must share one grid.")
+        raise ValueError("Landsat reflectance and QA arrays must share one grid.")
 
     valid = (
         (red >= SR_MIN_DN) & (red <= SR_MAX_DN)
