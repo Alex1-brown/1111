@@ -1,4 +1,5 @@
 import unittest
+from datetime import date
 
 import numpy as np
 
@@ -8,10 +9,33 @@ from science_core.landsat_validation import (
     _pearson,
     _spearman,
     ndvi_from_landsat_arrays,
+    _nearest_modis_composite,
 )
 
 
 class LandsatValidationTests(unittest.TestCase):
+    def test_landsat_pairs_with_nearest_same_year_modis_composite(self):
+        composites = {
+            date(2018, 7, 12): [0.2, 0.4, 0.6],
+            date(2018, 8, 12): [0.3, 0.5, 0.7],
+            date(2019, 7, 12): [0.1, 0.2, 0.3],
+        }
+        match = _nearest_modis_composite(composites, date(2018, 7, 15), 24)
+        self.assertEqual(match, (date(2018, 7, 12), 0.4, -3))
+
+    def test_landsat_modis_pairing_rejects_large_date_gap_and_other_year(self):
+        composites = {date(2018, 6, 1): [0.2, 0.3, 0.4]}
+        self.assertIsNone(
+            _nearest_modis_composite(composites, date(2018, 7, 15), 24)
+        )
+        self.assertIsNone(
+            _nearest_modis_composite(composites, date(2019, 6, 1), 24)
+        )
+
+    def test_landsat_modis_pairing_rejects_negative_tolerance(self):
+        with self.assertRaises(ValueError):
+            _nearest_modis_composite({}, date(2018, 7, 15), -1)
+
     def test_clear_pixel_uses_collection_two_scale_and_offset(self):
         red = np.array([[15000, 15000]], dtype=np.uint16)
         nir = np.array([[25000, 25000]], dtype=np.uint16)
