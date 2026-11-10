@@ -271,6 +271,7 @@ def validate_landsat_against_modis(
     end_year: int = 2023,
     maximum_cloud_cover: float = 40.0,
     minimum_valid_pixels: int = 500,
+    maximum_sensor_date_difference_days: int = 24,
 ) -> dict[str, object]:
     """Compare annual summer Landsat 8/9 NDVI with July MODIS NDVI in the same window."""
     root = artifact_dir
@@ -282,14 +283,16 @@ def validate_landsat_against_modis(
     if not raw_path.exists():
         raise FileNotFoundError(raw_path)
 
-    modis_july: dict[int, list[float]] = defaultdict(list)
+    # Keep each quality-screened monthly composite separate so Landsat is
+    # paired with the nearest MODIS acquisition date, not a broad monthly pool.
+    modis_by_date: dict[date, list[float]] = defaultdict(list)
     with raw_path.open(newline="", encoding="utf-8") as stream:
         for row in csv.DictReader(stream):
             if row["quality_code"] != "0" or not row["ndvi"]:
                 continue
-            year = int(row["date"][:4])
-            if start_year <= year <= end_year and row["date"][5:7] == "07":
-                modis_july[year].append(float(row["ndvi"]))
+            composite_date = date.fromisoformat(row["date"][:10])
+            if start_year <= composite_date.year <= end_year:
+                modis_by_date[composite_date].append(float(row["ndvi"]))
 
     items = _search_landsat_items(latitude, longitude, start_year, end_year, radius_km)
     selected = _select_one_scene_per_year(
@@ -304,20 +307,39 @@ def validate_landsat_against_modis(
             result = _read_scene_ndvi(
                 item, latitude, longitude, radius_km, minimum_valid_pixels, token_cache
             )
-            modis_values = modis_july.get(year, [])
+            landsat_date = date.fromisoformat(str(item["__date"]))
+            candidate_dates = [candidate for candidate in modis_by_date if candidate.year == year]
+            if not candidate_dates:
+                raise LandsatValidationError(f"No quality-screened MODIS composites for {year}.")
+            modis_date = min(
+                candidate_dates,
+                key=lambda candidate: (abs((candidate - landsat_date).days), candidate),
+            )
+            date_difference = abs((modis_date - landsat_date).days)
+            if date_difference > maximum_sensor_date_difference_days:
+                raise LandsatValidationError(
+                    f"Nearest MODIS composite for {year} is {date_difference} days from "
+                    f"the Landsat scene; maximum allowed is {maximum_sensor_date_difference_days}."
+                )
+            modis_values = modis_by_date[modis_date]
             if len(modis_values) < 20:
-                raise LandsatValidationError(f"No adequate quality-screened July MODIS sample for {year}.")
+                raise LandsatValidationError(
+                    f"Only {len(modis_values)} quality-screened MODIS pixels for {modis_date}."
+                )
+            modis_median = float(np.median(modis_values))
             records.append({
                 "year": year,
                 "landsat_date": item["__date"],
+                "modis_composite_date": modis_date.isoformat(),
+                "sensor_date_difference_days": int((modis_date - landsat_date).days),
                 "platform": item.get("properties", {}).get("platform"),
                 "scene_cloud_cover_percent": float(item["__cloud_cover"]),
                 "landsat_clear_pixels": result["valid_pixels"],
                 "landsat_window_pixels": result["total_window_pixels"],
                 "landsat_summer_median_ndvi": result["median_ndvi"],
-                "modis_july_median_ndvi": float(np.median(modis_values)),
+                "modis_nearest_composite_median_ndvi": modis_median,
                 "difference_landsat_minus_modis": (
-                    float(result["median_ndvi"]) - float(np.median(modis_values))
+                    float(result["median_ndvi"]) - modis_median
                 ),
             })
         except Exception as exc:
@@ -332,7 +354,7 @@ def validate_landsat_against_modis(
 
     years = [int(item["year"]) for item in records]
     landsat_values = [float(item["landsat_summer_median_ndvi"]) for item in records]
-    modis_values = [float(item["modis_july_median_ndvi"]) for item in records]
+    modis_values = [float(item["modis_nearest_composite_median_ndvi"]) for item in records]
     common = list(zip(years, landsat_values))
     landsat_trend = mann_kendall([(float(year), value) for year, value in common])
     landsat_bootstrap = {
@@ -366,14 +388,17 @@ def validate_landsat_against_modis(
         },
         "period": [start_year, end_year],
         "season_window": "June 1 through September 30; one selected scene per year nearest July 15",
+        "cross_sensor_pairing": "Each Landsat scene is paired with the nearest same-year quality-screened MOD13Q1 composite date.",
+        "maximum_sensor_date_difference_days": maximum_sensor_date_difference_days,
+        "sensor_date_differences_days": [int(item["sensor_date_difference_days"]) for item in records],
         "maximum_scene_cloud_cover_percent": maximum_cloud_cover,
         "minimum_clear_pixels_per_scene": minimum_valid_pixels,
         "selected_scene_count": len(records),
         "available_stac_items": len(items),
         "failed_selected_scenes": failures,
         "years": years,
-        "pearson_r_landsat_vs_modis_july": _pearson(landsat_values, modis_values),
-        "spearman_rho_landsat_vs_modis_july": _spearman(landsat_values, modis_values),
+        "pearson_r_landsat_vs_nearest_modis_composite": _pearson(landsat_values, modis_values),
+        "spearman_rho_landsat_vs_nearest_modis_composite": _spearman(landsat_values, modis_values),
         "landsat_sen_mann_kendall": landsat_trend,
         "landsat_residual_block_bootstrap": landsat_bootstrap,
         "artifact_csv": str(csv_path),
@@ -401,6 +426,7 @@ def main() -> int:
     parser.add_argument("--end-year", type=int, default=2023)
     parser.add_argument("--maximum-cloud-cover", type=float, default=40.0)
     parser.add_argument("--minimum-valid-pixels", type=int, default=500)
+    parser.add_argument("--maximum-sensor-date-difference-days", type=int, default=24)
     args = parser.parse_args()
     result = validate_landsat_against_modis(
         args.artifact_dir,
@@ -411,6 +437,7 @@ def main() -> int:
         end_year=args.end_year,
         maximum_cloud_cover=args.maximum_cloud_cover,
         minimum_valid_pixels=args.minimum_valid_pixels,
+        maximum_sensor_date_difference_days=args.maximum_sensor_date_difference_days,
     )
     print(json.dumps(result, indent=2), flush=True)
     return 0
