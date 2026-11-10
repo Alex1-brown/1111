@@ -106,4 +106,4 @@ After downloading and extracting a live-data artifact, run the offline residual 
 
 ## Independent Landsat cross-check
 
-The validation workflow also compares summer Landsat 8/9 Collection 2 Level-2 NDVI with July MODIS NDVI in the same Dushanbe window. Run `python -m science_core.landsat_validation artifacts` after extracting the NASA artifact. See [VALIDATION_REPORT.md](VALIDATION_REPORT.md) for the 2013–2023 cross-sensor results and limitations.
+The validation workflow also compares summer Landsat 8/9 Collection 2 Level-2 NDVI with the nearest quality-screened MOD13Q1 composite in the same Dushanbe window. Landsat pixels are screened with QA_PIXEL, QA_RADSAT, and SR_QA_AEROSOL (including high-aerosol rejection); sensor-date pairs more than 24 days apart are rejected. Run `python -m science_core.landsat_validation artifacts` after extracting the NASA artifact. The published first-run Landsat statistics remain provisional until the stricter aerosol-screened live validation is rerun. See [VALIDATION_REPORT.md](VALIDATION_REPORT.md) for methods, results, and limitations.
