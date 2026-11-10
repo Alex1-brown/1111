@@ -57,3 +57,7 @@ AI tools assisted with software implementation, code review, statistical-method 
 ### Independent sensitivity check
 
 The current Dushanbe run is accompanied by a residual circular moving-block bootstrap check using 2-, 3-, and 4-year blocks, with Benjamini–Yekutieli correction within each eligible pixel family. See [VALIDATION_REPORT.md](VALIDATION_REPORT.md). This is a sensitivity analysis, not an independent satellite validation or causal attribution.
+
+### Independent Landsat cross-sensor check
+
+The same 4 km × 4 km window was checked with 11 USGS Landsat 8/9 Collection 2 Level-2 summer scenes (one per year, 2013–2023). The initial Landsat run (before the added aerosol-QA mask) estimated a Sen slope of −0.00402 NDVI/year (Kendall tau −0.60; Hamed–Rao MK p = 0.0127); these figures are provisional until the stricter live rerun completes. Residual moving-block bootstrap p-values were 0.0040, 0.00060, and 0.00020 for 2-, 3-, and 4-year blocks; all bootstrap slope intervals excluded zero. Landsat summer NDVI and July MODIS NDVI had Pearson r = 0.512 and Spearman rho = 0.473. This is cross-sensor consistency evidence, not ground truth or causal attribution; see [VALIDATION_REPORT.md](VALIDATION_REPORT.md).

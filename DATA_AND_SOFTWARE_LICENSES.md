@@ -34,3 +34,11 @@ Runtime dependencies are listed in [requirements.txt](requirements.txt). Their o
 ## AI assistance disclosure
 
 AI tools assisted with implementation, code review, statistical-method review, and documentation. Scientific observations are retrieved from the cited NASA data services and are not AI-generated. AI assistance does not replace independent scientific review. No NASA logo, insignia, or NASA-branded visual asset is AI-generated or modified.
+
+## USGS Landsat 8/9 Collection 2 Level-2 Surface Reflectance
+
+- Dataset DOI: https://doi.org/10.5066/P9OGBGM6
+- Product source and citation guidance: https://www.usgs.gov/landsat-missions/landsat-collection-2-surface-reflectance
+- USGS states there are no restrictions on use of Landsat products; cite the appropriate Level-2 dataset and retain the provider attribution.
+- Surface-reflectance scaling: DN × 0.0000275 − 0.2. The validation script uses QA_PIXEL bits for fill, dilated cloud, cirrus, cloud, cloud shadow, and snow, and excludes nonzero QA_RADSAT pixels. QA definitions: https://www.usgs.gov/landsat-missions/landsat-collection-2-quality-assessment-bands
+- The COGs are hosted through Microsoft Planetary Computer; do not assume the hosting service's terms are identical to the underlying USGS product terms. The project distributes derived statistics and citations, not source COG files.
