@@ -261,6 +261,30 @@ def _spearman(left: list[float], right: list[float]) -> float | None:
     return _pearson(_average_ranks(left), _average_ranks(right))
 
 
+def _nearest_modis_composite(
+    composites: dict[date, list[float]],
+    landsat_date: date,
+    maximum_difference_days: int = 24,
+) -> tuple[date, float, int] | None:
+    """Return the nearest same-year MODIS composite median and signed date gap."""
+    if maximum_difference_days < 0:
+        raise ValueError("maximum_difference_days must be non-negative.")
+    candidates = [candidate for candidate in composites if candidate.year == landsat_date.year]
+    if not candidates:
+        return None
+    nearest = min(
+        candidates,
+        key=lambda candidate: (abs((candidate - landsat_date).days), candidate),
+    )
+    signed_gap = (nearest - landsat_date).days
+    if abs(signed_gap) > maximum_difference_days:
+        return None
+    values = composites[nearest]
+    if not values:
+        return None
+    return nearest, float(np.median(values)), signed_gap
+
+
 def validate_landsat_against_modis(
     artifact_dir: Path,
     *,
@@ -308,30 +332,25 @@ def validate_landsat_against_modis(
                 item, latitude, longitude, radius_km, minimum_valid_pixels, token_cache
             )
             landsat_date = date.fromisoformat(str(item["__date"]))
-            candidate_dates = [candidate for candidate in modis_by_date if candidate.year == year]
-            if not candidate_dates:
-                raise LandsatValidationError(f"No quality-screened MODIS composites for {year}.")
-            modis_date = min(
-                candidate_dates,
-                key=lambda candidate: (abs((candidate - landsat_date).days), candidate),
+            matched_modis = _nearest_modis_composite(
+                modis_by_date, landsat_date, maximum_sensor_date_difference_days
             )
-            date_difference = abs((modis_date - landsat_date).days)
-            if date_difference > maximum_sensor_date_difference_days:
+            if matched_modis is None:
                 raise LandsatValidationError(
-                    f"Nearest MODIS composite for {year} is {date_difference} days from "
-                    f"the Landsat scene; maximum allowed is {maximum_sensor_date_difference_days}."
+                    f"No same-year quality-screened MODIS composite within "
+                    f"{maximum_sensor_date_difference_days} days of the Landsat scene."
                 )
+            modis_date, modis_median, signed_gap = matched_modis
             modis_values = modis_by_date[modis_date]
             if len(modis_values) < 20:
                 raise LandsatValidationError(
                     f"Only {len(modis_values)} quality-screened MODIS pixels for {modis_date}."
                 )
-            modis_median = float(np.median(modis_values))
             records.append({
                 "year": year,
                 "landsat_date": item["__date"],
                 "modis_composite_date": modis_date.isoformat(),
-                "sensor_date_difference_days": int((modis_date - landsat_date).days),
+                "sensor_date_difference_days": int(signed_gap),
                 "platform": item.get("properties", {}).get("platform"),
                 "scene_cloud_cover_percent": float(item["__cloud_cover"]),
                 "landsat_clear_pixels": result["valid_pixels"],
