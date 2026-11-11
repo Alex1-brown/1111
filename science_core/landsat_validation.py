@@ -6,7 +6,7 @@ import csv
 import json
 import math
 from collections import defaultdict
-from datetime import date, datetime, timezone
+from datetime import date
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -30,7 +30,15 @@ SR_SCALE = 0.0000275
 SR_OFFSET = -0.2
 SR_MIN_DN = 7273
 SR_MAX_DN = 43636
-INVALID_QA_PIXEL_BITS = (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5)
+# Landsat 8/9 QA_PIXEL: fill, cloud-related flags, snow and water.
+INVALID_QA_PIXEL_BITS = sum(1 << bit for bit in range(6)) | (1 << 7)
+# QA_RADSAT: only the red (B4), NIR (B5), and terrain-occlusion flags
+# affect this NDVI calculation; saturation in unrelated bands is not fatal.
+QA_RADSAT_REJECT_BITS = (1 << 3) | (1 << 4) | (1 << 11)
+# SR_QA_AEROSOL: reject fill, water, interpolated aerosol and high aerosol.
+QA_AEROSOL_REJECT_BITS = (1 << 0) | (1 << 2) | (1 << 5)
+QA_AEROSOL_LEVEL_MASK = 0b11 << 6
+QA_AEROSOL_HIGH_LEVEL = 0b11 << 6
 
 
 class LandsatValidationError(RuntimeError):
@@ -44,7 +52,7 @@ def ndvi_from_landsat_arrays(
     qa_radsat: np.ndarray,
     qa_aerosol: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Convert Landsat C2 L2 SR DNs and apply cloud, saturation, and aerosol QA."""
+    """Convert Landsat C2 L2 SR DNs to land NDVI using documented QA flags."""
     red = np.asarray(red_dn, dtype=np.float64)
     nir = np.asarray(nir_dn, dtype=np.float64)
     qa = np.asarray(qa_pixel, dtype=np.uint16)
@@ -57,11 +65,9 @@ def ndvi_from_landsat_arrays(
         (red >= SR_MIN_DN) & (red <= SR_MAX_DN)
         & (nir >= SR_MIN_DN) & (nir <= SR_MAX_DN)
         & ((qa & INVALID_QA_PIXEL_BITS) == 0)
-        & (saturation == 0)
-        # SR_QA_AEROSOL bit 0 marks fill; bits 6-7 encode aerosol level,
-        # where 3 means high aerosol (USGS recommends avoiding high-aerosol pixels).
-        & ((aerosol & 1) == 0)
-        & (((aerosol >> 6) & 0b11) != 0b11)
+        & ((saturation & QA_RADSAT_REJECT_BITS) == 0)
+        & ((aerosol & QA_AEROSOL_REJECT_BITS) == 0)
+        & ((aerosol & QA_AEROSOL_LEVEL_MASK) != QA_AEROSOL_HIGH_LEVEL)
     )
     red_reflectance = red * SR_SCALE + SR_OFFSET
     nir_reflectance = nir * SR_SCALE + SR_OFFSET
@@ -234,6 +240,7 @@ def _read_scene_ndvi(
     return {
         "median_ndvi": float(np.nanmedian(ndvi)),
         "valid_pixels": count,
+        "valid_pixel_fraction": float(count / ndvi.size) if ndvi.size else 0.0,
         "total_window_pixels": int(ndvi.size),
         "crs": str(crs),
         "window_transform": list(transform)[:6],
@@ -292,6 +299,26 @@ def _nearest_modis_composite(
     if not values:
         return None
     return nearest, float(np.median(values)), signed_gap
+
+
+def _paired_error_metrics(landsat: list[float], modis: list[float]) -> dict[str, object] | None:
+    """Descriptive paired-window error metrics; not pixel-wise accuracy statistics."""
+    if len(landsat) != len(modis):
+        raise ValueError("Paired Landsat and MODIS series must have equal lengths.")
+    if not landsat:
+        return None
+    left = np.asarray(landsat, dtype=float)
+    right = np.asarray(modis, dtype=float)
+    if np.any(~np.isfinite(left)) or np.any(~np.isfinite(right)):
+        raise ValueError("Paired Landsat and MODIS values must be finite.")
+    differences = left - right
+    return {
+        "n": int(len(differences)),
+        "mean_bias_landsat_minus_modis": float(np.mean(differences)),
+        "median_bias_landsat_minus_modis": float(np.median(differences)),
+        "mean_absolute_error": float(np.mean(np.abs(differences))),
+        "root_mean_square_error": float(np.sqrt(np.mean(differences ** 2))),
+    }
 
 
 def _landsat_bootstrap_eligibility(years: list[int]) -> tuple[bool, str]:
@@ -383,6 +410,7 @@ def validate_landsat_against_modis(
                 "platform": item.get("properties", {}).get("platform"),
                 "scene_cloud_cover_percent": float(item["__cloud_cover"]),
                 "landsat_clear_pixels": result["valid_pixels"],
+                "landsat_valid_pixel_fraction": result["valid_pixel_fraction"],
                 "landsat_window_pixels": result["total_window_pixels"],
                 "landsat_summer_median_ndvi": result["median_ndvi"],
                 "modis_nearest_composite_median_ndvi": modis_median,
@@ -405,6 +433,16 @@ def validate_landsat_against_modis(
     modis_values = [float(item["modis_nearest_composite_median_ndvi"]) for item in records]
     common = list(zip(years, landsat_values))
     landsat_trend = mann_kendall([(float(year), value) for year, value in common])
+    modis_trend = mann_kendall([(float(year), value) for year, value in zip(years, modis_values)])
+    paired_metrics = _paired_error_metrics(landsat_values, modis_values)
+    landsat_slope = landsat_trend.get("sen_slope_per_year")
+    modis_slope = modis_trend.get("sen_slope_per_year")
+    if landsat_slope is None or modis_slope is None or landsat_slope == 0 or modis_slope == 0:
+        trend_direction_agreement = "indeterminate"
+    elif np.sign(float(landsat_slope)) == np.sign(float(modis_slope)):
+        trend_direction_agreement = "same_direction"
+    else:
+        trend_direction_agreement = "opposite_direction"
     bootstrap_eligible, bootstrap_reason = _landsat_bootstrap_eligibility(years)
     if bootstrap_eligible:
         landsat_bootstrap = {
@@ -458,24 +496,41 @@ def validate_landsat_against_modis(
             "conversion": "reflectance = DN * 0.0000275 - 0.2",
             "scale": SR_SCALE,
             "offset": SR_OFFSET,
+            "usgs_documented_product_valid_dn_range_inclusive": [1, 65455],
             "project_accepted_dn_range_inclusive": [SR_MIN_DN, SR_MAX_DN],
-            "accepted_range_rationale": "Project filter retaining scaled reflectance approximately within 0 to 1; narrower than the full USGS stored-DN range.",
+            "accepted_range_rationale": "Project filter retaining scaled reflectance approximately within 0 to 1; narrower than the full USGS stored-DN valid range.",
             "ndvi_formula": "(NIR - red) / (NIR + red)",
+            "ndvi_units": "dimensionless",
         },
         "quality_policy": {
+            "version": "landsat_c2_l2_land_ndvi_v2",
             "qa_pixel_excluded_bits": {
                 "0": "fill",
                 "1": "dilated cloud",
-                "2": "cirrus",
-                "3": "cloud",
-                "4": "cloud shadow",
-                "5": "snow",
+                "2": "high-confidence cirrus",
+                "3": "high-confidence cloud",
+                "4": "high-confidence cloud shadow",
+                "5": "high-confidence snow",
+                "7": "water",
             },
-            "qa_radsat": "exclude any pixel with a nonzero QA_RADSAT value (conservative across all bands and terrain occlusion)",
-            "sr_qa_aerosol": "exclude fill (bit 0) and high aerosol level (bits 6-7 = 3); invalid-retrieval and interpolated flags are not additionally screened",
+            "qa_radsat_excluded_bits": {
+                "3": "red band B4 saturation",
+                "4": "near-infrared band B5 saturation",
+                "11": "terrain occlusion",
+            },
+            "sr_qa_aerosol_excluded_bits": {
+                "0": "fill",
+                "2": "water",
+                "5": "interpolated aerosol",
+            },
+            "sr_qa_aerosol_excluded_level": {
+                "bits_6_7_value_3": "high aerosol",
+            },
+            "sr_qa_aerosol_valid_retrieval_bit_1": "not required; climatology-level aerosol may be retained when no excluded aerosol flag is set",
             "scene_cloud_cover_max_percent": maximum_cloud_cover,
             "minimum_clear_pixels_per_scene": minimum_valid_pixels,
-            "water_pixels": "not excluded by the current pixel mask; interpret this cross-check as land-surface NDVI including any retained water pixels",
+            "water_pixels": "excluded when either QA_PIXEL bit 7 or SR_QA_AEROSOL bit 2 is set",
+            "aerosol_policy": "conservative: interpolated and high-aerosol pixels are excluded",
         },
         "study_window": {
             "latitude": latitude, "longitude": longitude, "radius_km": radius_km,
@@ -494,14 +549,20 @@ def validate_landsat_against_modis(
         "years": years,
         "pearson_r_landsat_vs_nearest_modis_composite": _pearson(landsat_values, modis_values),
         "spearman_rho_landsat_vs_nearest_modis_composite": _spearman(landsat_values, modis_values),
+        "paired_error_metrics_landsat_minus_modis": paired_metrics,
+        "paired_error_metrics_interpretation": "Descriptive annual paired-window median differences; not pixel-wise accuracy statistics and no confidence interval is implied.",
         "landsat_sen_mann_kendall": landsat_trend,
+        "matched_modis_sen_mann_kendall": modis_trend,
+        "cross_sensor_trend_direction_agreement": trend_direction_agreement,
         "landsat_residual_block_bootstrap": landsat_bootstrap,
         "artifact_csv": str(csv_path),
         "interpretation_warning": (
             "Cross-sensor consistency check only. Landsat 30 m and MODIS 250 m have different "
             "pixel footprints, spatial support, spectral response, compositing, acquisition dates, and processing. "
-            "The windows share a nominal centre and radius but are not pixel-identical; water pixels are not "
-            "currently excluded. One summer scene per year does not establish a long-term trend or causal explanation."
+            "The windows share a nominal centre and radius but are not pixel-identical. QA policy v2 excludes "
+            "water, fill, cloud, shadow, snow, interpolated/high aerosol, red/NIR saturation and terrain-occluded pixels. "
+            "Paired error metrics are descriptive window-median comparisons, not pixel-wise accuracy. One summer "
+            "scene per year does not establish a long-term trend or causal explanation."
         ),
     }
     json_path = output_dir / "landsat_modis_summer_crosscheck.json"
