@@ -1,6 +1,6 @@
 # Project state and handoff
 
-Last updated: 2026-11-09
+Last updated: 2026-11-11
 Repository: https://github.com/Alex1-brown/1111
 Branch: main
 Current HEAD: see the main branch for the live revision
@@ -24,6 +24,7 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 - Annual aggregate NDVI uses a fixed set of pixels present in every year of the core period, preventing changing spatial coverage from driving the overall trend.
 - Pettitt change-point screening and robust MAD anomaly screening for annual series.
 - Monthly NDVI/POWER cross-source anomaly correlations are restricted to the core period overlap; exploratory association only, not validation or causation.
+- Independent Landsat 8/9 Collection 2 Level-2 cross-sensor check was rerun on 2026-11-11 with QA policy v3 and existing NASA artifact #22. Nine of eleven selected years passed; 2015 and 2016 retained only 225 and 3 pixels. All nine successful windows had full raster coverage. Landsat n=9: Sen slope −0.00279 NDVI/year, p=0.0763, nominal 95% CI [−0.00655, +0.00014]. Matched MODIS n=9: slope −0.00361, p=0.2515, CI [−0.00561, +0.00270]. Neither trend is significant at 0.05; Hamed–Rao was not applied because n<10. This is a consistency check, not independent confirmation or ground truth.
 - Outputs: JSON, CSV, GeoJSON, SVG charts, and a self-contained offline HTML report with clickable spatial trend grid.
 - `HACKATHON_PITCH.md` contains the project brief, challenge alignment, methods, safeguards and next upgrades.
 
@@ -37,6 +38,7 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 - `anomaly_analysis.py`: robust MAD anomaly screening.
 - `spatial_analysis.py`: annual per-pixel NDVI medians, coverage-based core period selection, fixed-panel annual summaries, per-pixel trends and BY q-values over eligible tests only.
 - `planetary_modis.py`: STAC search, monthly sampling, COG signing/window reads and quality screening.
+- `landsat_validation.py`: independent Landsat 8/9 C2 L2 NDVI cross-check with QA v3, full-window coverage checks, per-flag QA counts, paired MODIS comparisons and trend-direction diagnostics.
 - `cross_source_analysis.py`: monthly NDVI/POWER alignment and anomaly correlations.
 - `visualization.py`: dependency-free SVG charts.
 - `html_report.py`: standalone offline HTML report.
@@ -99,11 +101,11 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 
 ## Immediate next steps
 
-1. [Completed 2026-11-09] Download and inspect the successful run #21 artifact, including report JSON, annual summaries, per-pixel CSV/GeoJSON and offline HTML. Treat its pre-correction p/q values as a historical baseline only.
-2. Review the new Hamed–Rao outputs from the next offline test run; verify how many pixels are eligible, how many are excluded for irregular spacing or unestimable residual-rank ACF, and whether q-values are computed only over the eligible family.
-3. Benchmark the Hamed–Rao implementation against controlled AR(1) simulations and an independent reference implementation; test sensitivity to the significant-lag threshold and missing-year patterns.
-4. Add an independent quantitative precipitation product such as GPM IMERG only after confirming open access, product version, units, QA flags, temporal aggregation and licensing. Do not call the current NDVI/POWER correlations validation.
-5. Prepare a short reproducible demo and final hackathon submission. Avoid another live NASA data run unless a material scientific change requires it.
+1. Extend failure diagnostics so 2015/2016 QA flag counts are retained even when a scene fails the minimum-valid-pixel threshold; test alternative summer scenes without relaxing the high-aerosol screen.
+2. Benchmark Hamed–Rao against controlled positive/negative AR(1) simulations and an independent reference implementation; test lag-threshold sensitivity and missing-year patterns.
+3. Add GPM IMERG only after confirming the exact product/version, Earthdata authentication requirements, units, QA flags, temporal aggregation and license; report missing credentials rather than bypassing authentication.
+4. Add a sensitivity comparison for optional interpolated-aerosol exclusion, clearly reporting the effect on coverage and trend eligibility.
+5. Prepare a reproducible challenge demo and final submission. Do not rerun NASA live data collection unless a material scientific change requires it.
 
 ## Work constraints
 

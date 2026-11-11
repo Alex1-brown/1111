@@ -12,6 +12,11 @@ on:
         required: true
         default: nasa-real-data-22
         type: string
+  push:
+    branches:
+      - work/landsat-qa-policy-v2-2026-11-11
+    paths:
+      - science_core/landsat_validation.py
 
 permissions:
   actions: read
@@ -35,12 +40,13 @@ jobs:
       - name: Download the completed NASA data artifact
         uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.artifact_name }}
+          name: ${{ github.event.inputs.artifact_name || 'nasa-real-data-22' }}
           repository: Alex1-brown/1111
-          run-id: ${{ inputs.source_run_id }}
+          run-id: ${{ github.event.inputs.source_run_id || '42662224195' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: nasa-real-data-22
       - name: Run offline block-bootstrap sensitivity analysis
+        if: github.event_name == 'workflow_dispatch'
         run: |
           python -m science_core.bootstrap_validation nasa-real-data-22 \
             --spatial-replicates 5000 \
@@ -49,13 +55,21 @@ jobs:
       - name: Run Landsat 8/9 cross-sensor check
         run: |
           python -m science_core.landsat_validation nasa-real-data-22
-      - name: Upload independent validation results
+      - name: Upload bootstrap sensitivity results
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: ndvi-block-bootstrap-validation
           path: |
             nasa-real-data-22/modis_ndvi/ndvi_block_bootstrap_validation.csv
             nasa-real-data-22/modis_ndvi/ndvi_block_bootstrap_validation.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload Landsat cross-sensor results
+        uses: actions/upload-artifact@v4
+        with:
+          name: landsat-cross-sensor-validation
+          path: |
             nasa-real-data-22/modis_ndvi/landsat_modis_summer_crosscheck.csv
             nasa-real-data-22/modis_ndvi/landsat_modis_summer_crosscheck.json
           if-no-files-found: error

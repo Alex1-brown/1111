@@ -20,6 +20,7 @@ The pipeline is deliberately modular: the workflow is reusable, while scientific
 
 - **NASA POWER Daily** — 2 m air temperature (T2M) and corrected precipitation (PRECTOTCORR), daily point extraction.
 - **NASA MODIS/Terra MOD13Q1.061** — 250 m, 16-day NDVI and pixel-reliability data, accessed as cloud-optimized GeoTIFFs through the Microsoft Planetary Computer STAC collection.
+- **USGS Landsat 8/9 Collection 2 Level-2 Surface Reflectance** — 30 m red/NIR reflectance and QA bands, used as an independent cross-sensor consistency check for the overlapping 2013–2023 period.
 
 The current demonstration samples a 17 × 17 MODIS pixel window around the selected location. One 16-day composite is selected per calendar month, nearest to mid-month. Only pixel-reliability code 0 is accepted. An annual pixel median requires at least three quality-screened monthly composites.
 
@@ -49,7 +50,7 @@ The system answers the central trend-detection questions:
 - **What changed?** — identifies the indicator and detected pattern.
 - **Where?** — maps the spatial distribution of per-pixel trends.
 - **How much?** — estimates change rates with Sen's slope.
-- **How well supported?** — reports p-values, spatial q-values, coverage, quality filters and limitations.
+- **How well supported?** — reports p-values, spatial q-values, coverage, quality filters and limitations. The QA-v3 Landsat comparison currently has nine usable years; its negative Sen slope is not significant (p = 0.076, nominal 95% CI crosses zero), so it does not independently confirm the MODIS trend.
 
 It also makes incomplete coverage visible. Years with insufficient monthly observations are excluded from trend inference rather than being silently treated as complete.
 
@@ -62,15 +63,17 @@ It also makes incomplete coverage visible. Years with insufficient monthly obser
 - Hamed–Rao correction is approximate and is not attempted for short, irregular or unestimable series. The five-year POWER window and Pettitt change-point p-values remain unadjusted for serial dependence.
 - Spatial BY q-values apply only to the eligible pixel family; they are not causal evidence and do not prove that all dependence has been removed.
 - The current spatial window is a local sample, not a region-wide census.
+- The Landsat cross-sensor comparison is a consistency check, not ground truth. Two of eleven selected years failed the valid-pixel threshold; n = 9 is too short for the configured Hamed–Rao correction, and the resulting nominal trend test is not significant.
 - The Planetary Computer STAC collection has its own license metadata; source redistribution must follow the current collection terms and NASA LP DAAC citation guidance.
 
 ## Next scientific upgrades
 
-1. Benchmark the Hamed–Rao implementation against controlled AR(1) simulations and an independent reference implementation; assess sensitivity to lag selection and missing years.
-2. Add an independent precipitation dataset such as GPM IMERG for a more direct precipitation cross-check.
-3. Add quality-screened MODIS land-surface temperature, clearly distinguished from 2 m air temperature.
-4. Expand from a local pixel window to a regional grid and evaluate sensitivity to spatial scale.
-5. Add a benchmark suite using synthetic series with known trends, change points, missingness and autocorrelation.
+1. Improve Landsat annual coverage by examining alternative summer scenes for the two failed years while preserving the documented high-aerosol and pixel-quality screens.
+2. Benchmark the Hamed–Rao implementation against controlled AR(1) simulations and an independent reference implementation; assess sensitivity to lag selection and missing years.
+3. Add an independent precipitation dataset such as GPM IMERG for a more direct precipitation cross-check.
+4. Add quality-screened MODIS land-surface temperature, clearly distinguished from 2 m air temperature.
+5. Expand from a local pixel window to a regional grid and evaluate sensitivity to spatial scale.
+6. Add a benchmark suite using synthetic series with known trends, change points, missingness and autocorrelation.
 
 ## Primary references
 
