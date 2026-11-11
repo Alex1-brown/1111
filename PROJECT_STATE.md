@@ -101,8 +101,8 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 
 ## Immediate next steps
 
-1. Run the manual validate-nasa-artifact.yml workflow using existing NASA live run #22 (run ID 42662224195, artifact nasa-real-data-22) so the updated Landsat QA policy v2 is applied to the already-collected MODIS artifact; this does not require a new NASA collection run.
-2. Record the actual per-year valid-pixel fractions, paired error metrics and matched-sensor trend results from that run. Until then, treat all existing Landsat numerical results as pre-v2 historical baselines.
+1. The QA-v2 branch push triggers one Landsat-only artifact-validation run against existing NASA live run #22 (run ID 42662224195, artifact nasa-real-data-22); the bootstrap workflow-dispatch path remains separate, and no new NASA collection run is required.
+2. Review the real per-year valid-pixel fractions, paired difference metrics and matched-sensor trend results from that run. Until then, treat all existing Landsat numerical results as pre-v2 historical baselines.
 3. Benchmark Hamed–Rao against controlled positive/negative AR(1) simulations and an independent reference implementation; test lag-threshold sensitivity and missing-year patterns.
 4. Add GPM IMERG only after confirming the exact product/version, Earthdata authentication requirements, units, QA flags, temporal aggregation and license; report a missing-credentials state rather than bypassing authentication.
 5. Prepare a reproducible challenge demo and final submission. Do not rerun NASA live data collection unless a material scientific change requires it.
