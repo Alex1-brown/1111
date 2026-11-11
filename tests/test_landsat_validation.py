@@ -10,6 +10,7 @@ from science_core.landsat_validation import (
     _geometry_covers_window,
     _paired_error_metrics,
     _qa_flag_counts,
+    _insufficient_scene_diagnostic,
     _raster_window_coverage_fraction,
     _pearson,
     _spearman,
@@ -116,6 +117,26 @@ class LandsatValidationTests(unittest.TestCase):
         eligible, reason = _landsat_bootstrap_eligibility(years)
         self.assertFalse(eligible)
         self.assertEqual(reason, "requires_unique_consecutive_annual_observations")
+
+    def test_failed_scene_diagnostic_preserves_qa_counts_below_threshold(self):
+        item = {"id": "LC08_TEST_SCENE"}
+        result = {
+            "valid_pixels": 3,
+            "valid_pixel_fraction": 3 / 100,
+            "window_coverage_fraction": 1.0,
+            "total_window_pixels": 100,
+            "qa_flag_counts": {
+                "total_pixels": 100,
+                "sr_qa_aerosol_high": 90,
+                "sr_qa_aerosol_interpolated": 80,
+            },
+        }
+        diagnostic = _insufficient_scene_diagnostic(item, 2016, result, 500)
+        self.assertEqual(diagnostic["year"], 2016)
+        self.assertEqual(diagnostic["valid_pixels"], 3)
+        self.assertEqual(diagnostic["qa_flag_counts"]["sr_qa_aerosol_high"], 90)
+        self.assertEqual(diagnostic["qa_flag_counts"]["sr_qa_aerosol_interpolated"], 80)
+        self.assertIn("minimum required is 500", diagnostic["error"])
 
     def test_qa_flag_counts_are_non_exclusive_and_report_interpolation(self):
         qa = np.array([[0, 1 << 7, 1 << 3]], dtype=np.uint16)
