@@ -122,6 +122,27 @@ def _qa_flag_counts(
     return {"total_pixels": int(qa.size), **{name: int(mask.sum()) for name, mask in masks.items()}}
 
 
+def _insufficient_scene_diagnostic(
+    item: dict[str, object], year: int, result: dict[str, object],
+    minimum_valid_pixels: int,
+) -> dict[str, object]:
+    """Preserve per-scene QA evidence when a scene is below the analysis threshold."""
+    count = int(result["valid_pixels"])
+    return {
+        "scene_id": str(item.get("id", "")),
+        "year": year,
+        "error": (
+            f"Only {count} clear Landsat pixels; minimum required is "
+            f"{minimum_valid_pixels}."
+        ),
+        "valid_pixels": count,
+        "valid_pixel_fraction": float(result["valid_pixel_fraction"]),
+        "window_coverage_fraction": float(result["window_coverage_fraction"]),
+        "total_window_pixels": int(result["total_window_pixels"]),
+        "qa_flag_counts": result["qa_flag_counts"],
+    }
+
+
 def _window_sample_points(latitude: float, longitude: float, radius_km: int) -> tuple[tuple[float, float], ...]:
     """Nine lon/lat samples for the nominal square analysis window."""
     lat_delta = radius_km / 110.574
@@ -330,11 +351,8 @@ def _read_scene_ndvi(
         exclude_interpolated_aerosol=exclude_interpolated_aerosol,
     )
     count = int(valid.sum())
-    if count < minimum_valid_pixels:
-        raise LandsatValidationError(
-            f"Only {count} clear Landsat pixels in scene {item.get('id')}; "
-            f"minimum required is {minimum_valid_pixels}."
-        )
+    # Return QA diagnostics even when the scene fails the valid-pixel threshold.
+    # The caller records it as a failed observation; it must never enter trend statistics.
     return {
         "median_ndvi": float(np.nanmedian(ndvi)),
         "valid_pixels": count,
@@ -490,6 +508,11 @@ def validate_landsat_against_modis(
                 minimum_window_coverage_fraction=minimum_window_coverage_fraction,
                 exclude_interpolated_aerosol=exclude_interpolated_aerosol,
             )
+            if int(result["valid_pixels"]) < minimum_valid_pixels:
+                failures.append(_insufficient_scene_diagnostic(
+                    item, year, result, minimum_valid_pixels
+                ))
+                continue
             landsat_date = date.fromisoformat(str(item["__date"]))
             matched_modis = _nearest_modis_composite(
                 modis_by_date, landsat_date, maximum_sensor_date_difference_days
@@ -664,8 +687,14 @@ def validate_landsat_against_modis(
             {"year": int(item["year"]), "scene_id": item["landsat_scene_id"],
              "counts": json.loads(item["landsat_qa_flag_counts"])}
             for item in records
+        ] + [
+            {"year": int(item["year"]), "scene_id": item["scene_id"],
+             "counts": item["qa_flag_counts"], "analysis_status": "below_minimum_valid_pixels",
+             "valid_pixels": item["valid_pixels"],
+             "valid_pixel_fraction": item["valid_pixel_fraction"]}
+            for item in failures if "qa_flag_counts" in item
         ],
-        "qa_flag_count_note": "Counts are non-exclusive; a pixel may carry multiple QA flags.",
+        "qa_flag_count_note": "Counts are non-exclusive and include scenes below the analysis threshold; a pixel may carry multiple QA flags.",
         "selected_scene_count": len(records),
         "available_stac_items": len(items),
         "failed_selected_scenes": failures,
