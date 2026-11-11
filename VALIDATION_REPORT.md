@@ -105,6 +105,32 @@ The absolute temporal mismatch was **1–7 days** for all 11 years. The updated 
 
 USGS product reference: [Landsat 8–9 OLI/TIRS Collection 2 Level-2 DOI](https://doi.org/10.5066/P9OGBGM6). USGS documents the surface-reflectance scale/offset and states that Landsat products have no restrictions on use when properly cited. See [USGS surface-reflectance guidance](https://www.usgs.gov/landsat-missions/landsat-collection-2-surface-reflectance) and [QA band definitions](https://www.usgs.gov/landsat-missions/landsat-collection-2-quality-assessment-bands).
 
+## Landsat QA-v3 cross-sensor run — 2026-11-11
+
+A Landsat-only validation run used the already-collected NASA MODIS artifact from live run #22 (run ID `42662224195`; no new NASA collection was started). The Landsat source was USGS Landsat 8/9 Collection 2 Level-2 Surface Reflectance, retrieved as COGs from the Microsoft Planetary Computer STAC collection. The STAC search returned 997 items. The selected analysis window was 4 km × 4 km.
+
+QA policy v3 rejected QA_PIXEL fill/cloud/cirrus/shadow/snow/water, QA_RADSAT red B4 and NIR B5 saturation plus terrain occlusion, SR_QA_AEROSOL fill/water, and high-aerosol pixels. The interpolation flag was counted but retained by default; a separate optional mode can exclude it. All nine successful scenes had a raster-window coverage fraction of 1.0. Two selected years did not meet the minimum of 500 valid pixels: 2015 retained 225 and 2016 retained 3. They are missing observations, not zero-valued NDVI.
+
+| Year | Landsat scene | Valid pixels | Valid fraction | Landsat median NDVI | Matched MODIS median NDVI | Landsat − MODIS |
+|---:|---|---:|---:|---:|---:|---:|
+| 2013 | LC08_L2SP_153033_20130717_02_T1 | 4,514 | 0.2552 | 0.2300 | 0.2530 | −0.0230 |
+| 2014 | LC08_L2SP_154033_20140711_02_T1 | 11,385 | 0.6436 | 0.2425 | 0.2495 | −0.0070 |
+| 2017 | LC08_L2SP_154033_20170719_02_T1 | 10,170 | 0.5749 | 0.2274 | 0.2345 | −0.0071 |
+| 2018 | LC08_L2SP_153033_20180715_02_T1 | 6,163 | 0.3484 | 0.2037 | 0.2344 | −0.0307 |
+| 2019 | LC08_L2SP_153033_20190718_02_T1 | 11,424 | 0.6458 | 0.2308 | 0.2384 | −0.0076 |
+| 2020 | LC08_L2SP_153033_20200704_02_T1 | 5,192 | 0.2935 | 0.2225 | 0.2491 | −0.0266 |
+| 2021 | LC08_L2SP_154033_20210714_02_T1 | 6,183 | 0.3495 | 0.1966 | 0.2540 | −0.0574 |
+| 2022 | LC09_L2SP_153033_20220718_02_T1 | 6,513 | 0.3682 | 0.2006 | 0.2046 | −0.0040 |
+| 2023 | LC08_L2SP_153033_20230713_02_T1 | 6,937 | 0.3922 | 0.2149 | 0.2073 | +0.0076 |
+
+Across these nine paired annual window medians, Pearson r = **0.3750** and Spearman rho = **0.2667**. Mean bias (Landsat minus MODIS) = **−0.0173**, median bias = **−0.0076**, mean absolute difference = **0.0190**, and root-mean-square difference = **0.0252**. These are descriptive differences between window medians, not pixel-wise accuracy scores.
+
+The Landsat series has n = 9, Kendall tau = **−0.500**, p = **0.0763**, and Sen slope = **−0.00279 NDVI/year** with nominal 95% interval **[−0.00655, +0.00014]**. The matched MODIS subset has n = 9, tau = **−0.333**, p = **0.2515**, and Sen slope = **−0.00361 NDVI/year** with nominal 95% interval **[−0.00561, +0.00270]**. Both slope estimates are negative, but **neither trend is statistically significant at α = 0.05 and both intervals include zero**. Hamed–Rao correction and residual block bootstrap were not run because n = 9 is below the documented 10-observation minimum; these p-values and intervals use the independent-observation normal approximation and do not correct for temporal autocorrelation.
+
+For the nine successful scenes, the non-exclusive QA diagnostics reported 6,189–13,153 high-aerosol pixels, 15,709–15,753 interpolated-aerosol pixels, and 9–86 water pixels per 17,689-pixel window. Cloud, cirrus, shadow, snow and red/NIR saturation flags were zero in those successful windows. QA counts for the two failed scenes were not emitted by this run, so their low valid counts cannot be attributed to a single flag from the available output.
+
+USGS cautions against using high-aerosol pixels and documents the aerosol interpolation flag separately from the high-aerosol level. The local result therefore uses the high-aerosol exclusion, records interpolation without rejecting it by default, and exposes an optional strict sensitivity mode. The USGS also documents surface-reflectance retrieval caveats for hyper-arid areas and aerosol retrieval failures; this is relevant when interpreting the local dry-region Landsat comparison. This cross-sensor check does **not** independently confirm a significant trend. It is not ground truth: Landsat 30 m and MODIS 250 m have different spatial support, spectral response, compositing and acquisition dates.
+
 ## Limitations
 
 The residual bootstrap assumes the detrended residual process is sufficiently stationary. Circular block length is a sensitivity parameter, so several lengths are reported. These bootstrap p-values are not an independent satellite measurement and do not remove sensor, land-cover, or confounding concerns. The analysis is limited to one local 4 km × 4 km Dushanbe window. MODIS NDVI measures vegetation greenness, not temperature or biomass directly. The NASA POWER five-year series is too short to support long-term climate conclusions.

@@ -24,7 +24,7 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 - Annual aggregate NDVI uses a fixed set of pixels present in every year of the core period, preventing changing spatial coverage from driving the overall trend.
 - Pettitt change-point screening and robust MAD anomaly screening for annual series.
 - Monthly NDVI/POWER cross-source anomaly correlations are restricted to the core period overlap; exploratory association only, not validation or causation.
-- Independent Landsat 8/9 Collection 2 Level-2 surface-reflectance cross-check for 2013–2023. QA policy v3 masks water, fill/cloud/shadow/snow, high aerosol, red/NIR saturation and terrain occlusion; interpolated aerosol is counted and retained by default with an optional strict exclusion. Scene footprints and raster windows are checked for full-area coverage. Outputs include per-scene QA counts, matched MODIS trends and descriptive paired differences. Existing numerical Landsat baselines predate v3 and are not current results.
+- Independent Landsat 8/9 Collection 2 Level-2 cross-sensor check was rerun on 2026-11-11 with QA policy v3 and existing NASA artifact #22. Nine of eleven selected years passed; 2015 and 2016 retained only 225 and 3 pixels. All nine successful windows had full raster coverage. Landsat n=9: Sen slope −0.00279 NDVI/year, p=0.0763, nominal 95% CI [−0.00655, +0.00014]. Matched MODIS n=9: slope −0.00361, p=0.2515, CI [−0.00561, +0.00270]. Neither trend is significant at 0.05; Hamed–Rao was not applied because n<10. This is a consistency check, not independent confirmation or ground truth.
 - Outputs: JSON, CSV, GeoJSON, SVG charts, and a self-contained offline HTML report with clickable spatial trend grid.
 - `HACKATHON_PITCH.md` contains the project brief, challenge alignment, methods, safeguards and next upgrades.
 
@@ -101,10 +101,10 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 
 ## Immediate next steps
 
-1. Review the QA-v3 Landsat-only artifact-validation run against existing NASA live run #22 (run ID 42662224195, artifact nasa-real-data-22). QA-v2 retained 8/11 years and exposed missing per-flag diagnostics and incomplete-window risk; v3 addresses those points without a new NASA collection run.
-2. Record only the QA-v3 run's actual per-year coverage, QA counts, paired differences and matched-sensor trends. Do not reuse the earlier pre-v2 baseline as a v3 result.
-3. Benchmark Hamed–Rao against controlled positive/negative AR(1) simulations and an independent reference implementation; test lag-threshold sensitivity and missing-year patterns.
-4. Add GPM IMERG only after confirming the exact product/version, Earthdata authentication requirements, units, QA flags, temporal aggregation and license; report a missing-credentials state rather than bypassing authentication.
+1. Extend failure diagnostics so 2015/2016 QA flag counts are retained even when a scene fails the minimum-valid-pixel threshold; test alternative summer scenes without relaxing the high-aerosol screen.
+2. Benchmark Hamed–Rao against controlled positive/negative AR(1) simulations and an independent reference implementation; test lag-threshold sensitivity and missing-year patterns.
+3. Add GPM IMERG only after confirming the exact product/version, Earthdata authentication requirements, units, QA flags, temporal aggregation and license; report missing credentials rather than bypassing authentication.
+4. Add a sensitivity comparison for optional interpolated-aerosol exclusion, clearly reporting the effect on coverage and trend eligibility.
 5. Prepare a reproducible challenge demo and final submission. Do not rerun NASA live data collection unless a material scientific change requires it.
 
 ## Work constraints

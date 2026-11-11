@@ -78,14 +78,14 @@ class LandsatValidationTests(unittest.TestCase):
         self.assertEqual(valid.tolist(), [[False, True, False, False, False]])
         self.assertEqual(QA_RADSAT_REJECT_BITS, (1 << 3) | (1 << 4) | (1 << 11))
 
-    def test_water_and_interpolated_aerosol_pixels_are_excluded(self):
+    def test_water_is_excluded_and_interpolated_aerosol_is_retained_by_default(self):
         red = np.full((1, 4), 15000, dtype=np.uint16)
         nir = np.full((1, 4), 25000, dtype=np.uint16)
         qa = np.array([[1 << 7, 0, 0, 0]], dtype=np.uint16)
         saturation = np.zeros((1, 4), dtype=np.uint16)
         aerosol = np.array([[0, 1 << 2, 1 << 5, 0]], dtype=np.uint16)
         _, valid = ndvi_from_landsat_arrays(red, nir, qa, saturation, aerosol)
-        self.assertEqual(valid.tolist(), [[False, False, False, True]])
+        self.assertEqual(valid.tolist(), [[False, False, True, True]])
 
     def test_high_aerosol_and_aerosol_fill_are_excluded(self):
         red = np.full((1, 6), 15000, dtype=np.uint16)
