@@ -7,7 +7,10 @@ from science_core.landsat_validation import (
     INVALID_QA_PIXEL_BITS,
     QA_RADSAT_REJECT_BITS,
     _average_ranks,
+    _geometry_covers_window,
     _paired_error_metrics,
+    _qa_flag_counts,
+    _raster_window_coverage_fraction,
     _pearson,
     _spearman,
     ndvi_from_landsat_arrays,
@@ -85,15 +88,19 @@ class LandsatValidationTests(unittest.TestCase):
         self.assertEqual(valid.tolist(), [[False, False, False, True]])
 
     def test_high_aerosol_and_aerosol_fill_are_excluded(self):
-        red = np.full((1, 5), 15000, dtype=np.uint16)
-        nir = np.full((1, 5), 25000, dtype=np.uint16)
-        qa = np.zeros((1, 5), dtype=np.uint16)
-        saturation = np.zeros((1, 5), dtype=np.uint16)
+        red = np.full((1, 6), 15000, dtype=np.uint16)
+        nir = np.full((1, 6), 25000, dtype=np.uint16)
+        qa = np.zeros((1, 6), dtype=np.uint16)
+        saturation = np.zeros((1, 6), dtype=np.uint16)
         # 0 = climatology, 01 = low, 11 = high, bit 0 = fill.
-        # Bit 1 (valid retrieval) is intentionally not required.
-        aerosol = np.array([[0, 1 << 6, 3 << 6, 1, 1 << 1]], dtype=np.uint16)
+        # Interpolated aerosol is retained by default and can be screened explicitly.
+        aerosol = np.array([[0, 1 << 6, 3 << 6, 1, 1 << 1, 1 << 5]], dtype=np.uint16)
         _, valid = ndvi_from_landsat_arrays(red, nir, qa, saturation, aerosol)
-        self.assertEqual(valid.tolist(), [[True, True, False, False, True]])
+        self.assertEqual(valid.tolist(), [[True, True, False, False, True, True]])
+        _, strict_valid = ndvi_from_landsat_arrays(
+            red, nir, qa, saturation, aerosol, exclude_interpolated_aerosol=True
+        )
+        self.assertEqual(strict_valid.tolist(), [[True, True, False, False, True, False]])
 
     def test_landsat_bootstrap_requires_ten_consecutive_annual_observations(self):
         eligible, reason = _landsat_bootstrap_eligibility(list(range(2013, 2023)))
@@ -109,6 +116,38 @@ class LandsatValidationTests(unittest.TestCase):
         eligible, reason = _landsat_bootstrap_eligibility(years)
         self.assertFalse(eligible)
         self.assertEqual(reason, "requires_unique_consecutive_annual_observations")
+
+    def test_qa_flag_counts_are_non_exclusive_and_report_interpolation(self):
+        qa = np.array([[0, 1 << 7, 1 << 3]], dtype=np.uint16)
+        saturation = np.array([[0, 1 << 3, 0]], dtype=np.uint16)
+        aerosol = np.array([[1 << 5, 1 << 2, 3 << 6]], dtype=np.uint16)
+        counts = _qa_flag_counts(qa, saturation, aerosol)
+        self.assertEqual(counts["total_pixels"], 3)
+        self.assertEqual(counts["qa_pixel_water"], 1)
+        self.assertEqual(counts["qa_pixel_cloud"], 1)
+        self.assertEqual(counts["qa_radsat_red_saturation"], 1)
+        self.assertEqual(counts["sr_qa_aerosol_interpolated"], 1)
+        self.assertEqual(counts["sr_qa_aerosol_water"], 1)
+        self.assertEqual(counts["sr_qa_aerosol_high"], 1)
+
+    def test_scene_footprint_must_cover_the_full_window_not_only_the_centre(self):
+        small = {
+            "type": "Polygon",
+            "coordinates": [[[-0.01, -0.01], [0.01, -0.01], [0.01, 0.01],
+                             [-0.01, 0.01], [-0.01, -0.01]]],
+        }
+        large = {
+            "type": "Polygon",
+            "coordinates": [[[-0.04, -0.04], [0.04, -0.04], [0.04, 0.04],
+                             [-0.04, 0.04], [-0.04, -0.04]]],
+        }
+        self.assertFalse(_geometry_covers_window(small, 0.0, 0.0, 2))
+        self.assertTrue(_geometry_covers_window(large, 0.0, 0.0, 2))
+
+    def test_raster_window_coverage_fraction_is_exact_for_axis_aligned_window(self):
+        self.assertAlmostEqual(_raster_window_coverage_fraction(0, 0, 10, 10, 10, 10), 1.0)
+        self.assertAlmostEqual(_raster_window_coverage_fraction(-5, 0, 10, 10, 10, 10), 0.5)
+        self.assertEqual(_raster_window_coverage_fraction(20, 20, 10, 10, 10, 10), 0.0)
 
     def test_paired_error_metrics_are_descriptive_and_directional(self):
         metrics = _paired_error_metrics([0.5, 0.3, 0.7], [0.4, 0.5, 0.6])

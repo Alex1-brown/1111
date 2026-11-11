@@ -24,7 +24,7 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 - Annual aggregate NDVI uses a fixed set of pixels present in every year of the core period, preventing changing spatial coverage from driving the overall trend.
 - Pettitt change-point screening and robust MAD anomaly screening for annual series.
 - Monthly NDVI/POWER cross-source anomaly correlations are restricted to the core period overlap; exploratory association only, not validation or causation.
-- Independent Landsat 8/9 Collection 2 Level-2 surface-reflectance cross-check for 2013–2023. QA policy v2 masks water, fill/cloud/shadow/snow, interpolated/high aerosol, red/NIR saturation and terrain occlusion; outputs include matched MODIS trends and descriptive paired bias/MAE/RMSE. The existing numeric Landsat baseline predates QA policy v2 and is not a current result until rerun.
+- Independent Landsat 8/9 Collection 2 Level-2 surface-reflectance cross-check for 2013–2023. QA policy v3 masks water, fill/cloud/shadow/snow, high aerosol, red/NIR saturation and terrain occlusion; interpolated aerosol is counted and retained by default with an optional strict exclusion. Scene footprints and raster windows are checked for full-area coverage. Outputs include per-scene QA counts, matched MODIS trends and descriptive paired differences. Existing numerical Landsat baselines predate v3 and are not current results.
 - Outputs: JSON, CSV, GeoJSON, SVG charts, and a self-contained offline HTML report with clickable spatial trend grid.
 - `HACKATHON_PITCH.md` contains the project brief, challenge alignment, methods, safeguards and next upgrades.
 
@@ -38,7 +38,7 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 - `anomaly_analysis.py`: robust MAD anomaly screening.
 - `spatial_analysis.py`: annual per-pixel NDVI medians, coverage-based core period selection, fixed-panel annual summaries, per-pixel trends and BY q-values over eligible tests only.
 - `planetary_modis.py`: STAC search, monthly sampling, COG signing/window reads and quality screening.
-- `landsat_validation.py`: independent Landsat 8/9 C2 L2 NDVI cross-check with documented QA policy, scene provenance, paired MODIS comparisons and trend-direction diagnostics.
+- `landsat_validation.py`: independent Landsat 8/9 C2 L2 NDVI cross-check with QA v3, full-window coverage checks, per-flag QA counts, paired MODIS comparisons and trend-direction diagnostics.
 - `cross_source_analysis.py`: monthly NDVI/POWER alignment and anomaly correlations.
 - `visualization.py`: dependency-free SVG charts.
 - `html_report.py`: standalone offline HTML report.
@@ -101,8 +101,8 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 
 ## Immediate next steps
 
-1. The QA-v2 branch push triggers one Landsat-only artifact-validation run against existing NASA live run #22 (run ID 42662224195, artifact nasa-real-data-22); the bootstrap workflow-dispatch path remains separate, and no new NASA collection run is required.
-2. Review the real per-year valid-pixel fractions, paired difference metrics and matched-sensor trend results from that run. Until then, treat all existing Landsat numerical results as pre-v2 historical baselines.
+1. Review the QA-v3 Landsat-only artifact-validation run against existing NASA live run #22 (run ID 42662224195, artifact nasa-real-data-22). QA-v2 retained 8/11 years and exposed missing per-flag diagnostics and incomplete-window risk; v3 addresses those points without a new NASA collection run.
+2. Record only the QA-v3 run's actual per-year coverage, QA counts, paired differences and matched-sensor trends. Do not reuse the earlier pre-v2 baseline as a v3 result.
 3. Benchmark Hamed–Rao against controlled positive/negative AR(1) simulations and an independent reference implementation; test lag-threshold sensitivity and missing-year patterns.
 4. Add GPM IMERG only after confirming the exact product/version, Earthdata authentication requirements, units, QA flags, temporal aggregation and license; report a missing-credentials state rather than bypassing authentication.
 5. Prepare a reproducible challenge demo and final submission. Do not rerun NASA live data collection unless a material scientific change requires it.
