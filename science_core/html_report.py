@@ -201,7 +201,7 @@ footer{{margin-top:34px;color:var(--muted);font-size:13px}}
 </style>
 </head>
 <body><main>
-<header><div class="topbar"><div class="brand">EARTH SYSTEM / DATA LAB</div><nav class="nav" aria-label="Main navigation"><a href="#overview" id="nav-overview">Overview</a><a href="#spatial" id="nav-spatial">Spatial</a><a href="#charts" id="nav-charts">Charts</a><a href="#methods" id="nav-methods">Methods</a></nav><button class="lang-toggle" id="language-toggle" type="button" aria-label="Switch interface language">Русский</button></div>
+<div class="topbar"><div class="brand">EARTH SYSTEM / DATA LAB</div><nav class="nav" aria-label="Main navigation"><a href="#overview" id="nav-overview">Overview</a><a href="#spatial" id="nav-spatial">Spatial</a><a href="#charts" id="nav-charts">Charts</a><a href="#methods" id="nav-methods">Methods</a></nav><button class="lang-toggle" id="language-toggle" type="button" aria-label="Switch interface language">Русский</button></div>
 <header id="overview"><h1>Earth System Trend Detective</h1>
 <p id="hero-subtitle">Explore quality-screened NASA satellite and climate observations</p>
 <p>Generated: {html.escape(str(report.get("generated_at_utc", "unknown")))}</p></header>
