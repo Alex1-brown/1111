@@ -53,7 +53,7 @@ class HTMLReportTests(unittest.TestCase):
             html = render_html_report(report, trends, {"annual_ndvi.svg": str(chart)})
             self.assertIn("Earth System Trend Detective", html)
             self.assertIn("Select a grid cell", html)
-            self.assertIn("temporal autocorrelation", html)
+            self.assertIn("Hamed–Rao p-values are diagnostic only", html)
             self.assertIn("nominal 95% CI", html)
             self.assertIn("[-0.01500, -0.00500] NDVI/year", html)
             self.assertIn("Hamed-Rao variance sensitivity computed", html)
