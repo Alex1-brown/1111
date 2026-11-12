@@ -100,10 +100,16 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 - The spatial subset is a local sample, not a region-wide census.
 - Planetary Computer STAC collection license metadata must be followed; do not assume the hosted collection is public-domain simply because the source product is NASA.
 
+## Serial-correlation calibration audit (2026-11-12)
+
+- The new benchmark module runs the repository's actual Mann–Kendall implementation against stationary Gaussian AR(1) null series with positive and negative dependence, comparing iid and currently reported p-values with Wilson intervals.
+- The serial-correlation audit records the signed Hamed–Rao Eq. 30 formula, the difference from the pyMannKendall absolute-sum implementation, and the calibration limitations of short records.
+- A dedicated offline GitHub Actions workflow produces a fixed-seed benchmark artifact on the benchmark/** branch pattern. This is statistical method testing, not satellite-data simulation.
+
 ## Immediate next steps
 
 1. Run `python -m science_core.gpm_imerg --status` in the user's data environment; if credentials are available, obtain a spatially subsetted GPM_3IMERGDF V07 NetCDF through authenticated GES DISC access. Compare GPM and POWER only over matched UTC periods and after accounting for their different spatial support; call this a cross-source consistency check, not ground-truth validation.
-2. Benchmark Hamed–Rao against controlled positive/negative AR(1) simulations and an independent reference implementation; test lag-threshold sensitivity and missing-year patterns.
+2. Review the serial-correlation audit and fixed-seed AR(1) calibration artifact; test lag-threshold sensitivity and missing-year patterns before treating Hamed–Rao p-values as calibrated inference.
 3. Examine alternative Landsat summer scenes for 2015/2016 without relaxing the high-aerosol or pixel-quality screens.
 4. Add a sensitivity comparison for optional interpolated-aerosol exclusion, reporting coverage and trend eligibility.
 5. Prepare a reproducible challenge demo and final submission. Do not rerun NASA live data collection unless a material scientific change requires it.
