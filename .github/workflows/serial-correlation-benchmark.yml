@@ -3,6 +3,9 @@ name: Serial-correlation calibration
 on:
   push:
     branches: ["benchmark/**"]
+    paths:
+      - "science_core/serial_correlation_benchmark.py"
+      - "science_core/trend_analysis.py"
   workflow_dispatch:
 
 permissions:

@@ -173,10 +173,11 @@ def main() -> int:
                 "sen_slope_ci_95_lower_ndvi_per_year",
                 "sen_slope_ci_95_upper_ndvi_per_year",
                 "sen_slope_ci_95_method", "kendall_tau", "p_value",
-                "trend_method", "p_value_iid", "serial_correlation_adjusted",
-                "serial_correlation_status", "serial_correlation_variance_factor",
-                "serial_correlation_lags_used", "inferential_eligible", "q_value_by",
-                "by_q_le_0_05_in_eligible_family",
+                "p_value_hamed_rao_sensitivity", "trend_method", "p_value_iid",
+                "serial_correlation_adjusted", "serial_correlation_status",
+                "serial_correlation_variance_factor", "serial_correlation_lags_used",
+                "temporal_eligible", "statistical_inference_status",
+                "inferential_eligible", "q_value_by", "by_q_le_0_05_in_eligible_family",
             ]
             trend_path = ndvi_dir / "ndvi_spatial_trends.csv"
             with trend_path.open("w", newline="", encoding="utf-8") as csv_file:
@@ -309,8 +310,11 @@ def main() -> int:
                 "quality_counts": ndvi_data["quality_counts"],
                 "pixels_with_annual_data": len(annual_pixels),
                 "pixels_with_trend_estimates": len(pixel_trends),
-                "pixels_with_temporal_adjustment": sum(
+                "pixels_with_hamed_rao_sensitivity": sum(
                     bool(item["serial_correlation_adjusted"]) for item in pixel_trends
+                ),
+                "pixels_temporally_eligible_for_sensitivity": sum(
+                    bool(item["temporal_eligible"]) for item in pixel_trends
                 ),
                 "pixels_in_by_inferential_family": sum(
                     bool(item["inferential_eligible"]) for item in pixel_trends
@@ -322,14 +326,14 @@ def main() -> int:
                     bool(item["by_q_le_0_05_in_eligible_family"]) for item in pixel_trends
                 ),
                 "temporal_correction_method": (
-                    "Hamed & Rao (1998) modified Mann-Kendall variance; detrended-rank ACF; "
-                    "significant lags only; n >= 10 and equally spaced observations"
+                    "Hamed & Rao (1998) signed variance correction; sensitivity diagnostic only "
+                    "after AR(1) calibration showed non-nominal rejection rates in tested scenarios"
                 ),
                 "fixed_panel_pixels": fixed_panel_pixel_count,
                 "annual_fixed_panel_change_detection": ndvi_change_detection,
                 "multiple_testing_method": (
-                    "Benjamini-Yekutieli across temporally eligible per-pixel p-values; "
-                    "ineligible series excluded"
+                    "Benjamini-Yekutieli withheld for nonconstant pixel series pending Hamed-Rao "
+                    "calibration; only constant no-trend p=1 entries remain eligible"
                 ),
                 "minimum_years_per_pixel": args.ndvi_minimum_years,
                 "minimum_composites_per_pixel_year": args.ndvi_minimum_composites_per_pixel_year,
