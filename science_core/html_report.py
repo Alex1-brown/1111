@@ -246,20 +246,20 @@ The project-specific stationary Gaussian AR(1) calibration found that the curren
 <footer>Data sources: <a href="https://power.larc.nasa.gov/">NASA POWER</a>; <a href="https://doi.org/10.5067/MODIS/MOD13Q1.061">NASA LP DAAC MOD13Q1.061</a>; <a href="https://planetarycomputer.microsoft.com/api/stac/v1/collections/modis-13Q1-061">Microsoft Planetary Computer STAC collection</a>. Consult the repository README for citation, licensing notes and reproducibility instructions.</footer>
 <script>
 const reportData = {safe_report};
-const translations = {
-  en: {"nav-overview":"Overview","nav-spatial":"Spatial","nav-charts":"Charts","nav-methods":"Methods","hero-subtitle":"Explore quality-screened NASA satellite and climate observations","guide-title":"How to read this report","guide-text":"Start with the summary numbers, inspect the spatial grid and charts, then read the method limits before drawing conclusions. Blue means decreasing NDVI; orange means increasing NDVI. A blank cell means no estimate."},
-  ru: {"nav-overview":"Обзор","nav-spatial":"Пространство","nav-charts":"Графики","nav-methods":"Методы","hero-subtitle":"Изучайте проверенные спутниковые и климатические наблюдения NASA","guide-title":"Как читать этот отчёт","guide-text":"Сначала изучите сводные показатели, затем пространственную сетку и графики. Перед выводами прочитайте ограничения методов. Синий цвет означает снижение NDVI, оранжевый — рост. Пустая ячейка означает отсутствие оценки."}
-};
+const translations = {{
+  en: {{"nav-overview":"Overview","nav-spatial":"Spatial","nav-charts":"Charts","nav-methods":"Methods","hero-subtitle":"Explore quality-screened NASA satellite and climate observations","guide-title":"How to read this report","guide-text":"Start with the summary numbers, inspect the spatial grid and charts, then read the method limits before drawing conclusions. Blue means decreasing NDVI; orange means increasing NDVI. A blank cell means no estimate."}},
+  ru: {{"nav-overview":"Обзор","nav-spatial":"Пространство","nav-charts":"Графики","nav-methods":"Методы","hero-subtitle":"Изучайте проверенные спутниковые и климатические наблюдения NASA","guide-title":"Как читать этот отчёт","guide-text":"Сначала изучите сводные показатели, затем пространственную сетку и графики. Перед выводами прочитайте ограничения методов. Синий цвет означает снижение NDVI, оранжевый — рост. Пустая ячейка означает отсутствие оценки."}}
+}};
 let currentLanguage = "en";
-document.getElementById("language-toggle").addEventListener("click", () => {
+document.getElementById("language-toggle").addEventListener("click", () => {{
   currentLanguage = currentLanguage === "en" ? "ru" : "en";
-  for (const [id, value] of Object.entries(translations[currentLanguage])) {
+  for (const [id, value] of Object.entries(translations[currentLanguage])) {{
     const element = document.getElementById(id);
     if (element) element.textContent = value;
-  }
+  }}
   document.getElementById("language-toggle").textContent = currentLanguage === "en" ? "Русский" : "English";
   document.documentElement.lang = currentLanguage;
-});
+}});
 document.querySelectorAll(".pixel").forEach((cell) => {{
   cell.addEventListener("click", () => {{
     document.getElementById("pixel-detail").textContent = cell.dataset.info || "No details available.";
