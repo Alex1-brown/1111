@@ -52,6 +52,10 @@ class HTMLReportTests(unittest.TestCase):
             ]
             html = render_html_report(report, trends, {"annual_ndvi.svg": str(chart)})
             self.assertIn("Earth System Trend Detective", html)
+            self.assertIn("language-toggle", html)
+            self.assertIn("Как читать этот отчёт", html)
+            self.assertIn("href=\"#spatial\"", html)
+            self.assertIn("translations", html)
             self.assertIn("Select a grid cell", html)
             self.assertIn("Hamed–Rao p-values are diagnostic only", html)
             self.assertIn("nominal 95% CI", html)
