@@ -180,7 +180,7 @@ def render_html_report(
 <style>
 :root{{--ink:#172033;--muted:#667085;--line:#e5e7eb;--panel:#f8fafc;--blue:#2563eb;--orange:#dc6923}}
 *{{box-sizing:border-box}}body{{margin:0;background:#f3f5f8;color:var(--ink);font:15px/1.55 system-ui,-apple-system,Segoe UI,sans-serif}}
-main{{max-width:1180px;margin:0 auto;padding:28px 18px 60px}}header{{background:#10233f;color:white;padding:30px;border-radius:18px}}
+main{{max-width:1180px;margin:0 auto;padding:18px 18px 60px}}.topbar{{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}}.brand{{font-weight:750;letter-spacing:.01em}}.nav{{display:flex;gap:8px;flex-wrap:wrap}}.nav a,.lang-toggle{{border:1px solid var(--line);background:white;color:var(--ink);padding:8px 12px;border-radius:9px;text-decoration:none;font:inherit;font-size:13px;cursor:pointer}}.nav a:hover,.lang-toggle:hover{{background:#eef4ff}}header{{background:linear-gradient(120deg,#10233f,#1e4972);color:white;padding:clamp(22px,4vw,34px);border-radius:18px}}
 h1{{margin:0 0 8px;font-size:clamp(26px,4vw,38px)}}header p{{color:#d6e2f2;margin:0}}
 h2{{margin:30px 0 12px;font-size:22px}}h3{{margin:0 0 12px;font-size:16px}}
 .panel,.metric,.chart{{background:white;border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:14px}}
@@ -201,8 +201,9 @@ footer{{margin-top:34px;color:var(--muted);font-size:13px}}
 </style>
 </head>
 <body><main>
-<header><h1>Earth System Trend Detective</h1>
-<p>Reproducible analysis of NASA Earth-observation and climate data</p>
+<header><div class="topbar"><div class="brand">EARTH SYSTEM / DATA LAB</div><nav class="nav" aria-label="Main navigation"><a href="#overview" id="nav-overview">Overview</a><a href="#spatial" id="nav-spatial">Spatial</a><a href="#charts" id="nav-charts">Charts</a><a href="#methods" id="nav-methods">Methods</a></nav><button class="lang-toggle" id="language-toggle" type="button" aria-label="Switch interface language">Русский</button></div>
+<header id="overview"><h1>Earth System Trend Detective</h1>
+<p id="hero-subtitle">Explore quality-screened NASA satellite and climate observations</p>
 <p>Generated: {html.escape(str(report.get("generated_at_utc", "unknown")))}</p></header>
 <div class="metrics">
 <div class="metric"><strong>{metric(ndvi.get("composite_count"))}</strong><span>Monthly MODIS composites selected</span></div>
@@ -213,7 +214,8 @@ footer{{margin-top:34px;color:var(--muted);font-size:13px}}
 <div class="metric"><strong>{html.escape(trend_period_text)}</strong><span>MODIS core trend period</span></div>
 <div class="metric"><strong>{html.escape(str(change_year))}</strong><span>Pettitt candidate change year</span></div>
 </div>
-<h2>Spatial NDVI trend map</h2>
+<section class="panel" id="quick-guide"><h3 id="guide-title">How to read this report</h3><p id="guide-text">Start with the summary numbers, inspect the spatial grid and charts, then read the method limits before drawing conclusions. Blue means decreasing NDVI; orange means increasing NDVI. A blank cell means no estimate.</p></section>
+<h2 id="spatial">Spatial NDVI trend grid</h2>
 <section class="panel">
 <div class="legend"><span><i class="swatch" style="background:#2563eb"></i>NDVI decreasing</span>
 <span><i class="swatch" style="background:#dc6923"></i>NDVI increasing</span>
@@ -222,11 +224,11 @@ footer{{margin-top:34px;color:var(--muted);font-size:13px}}
 <div class="grid-wrap"><div>{grid_html}</div><div><h3>Pixel details</h3><div id="pixel-detail">Select a grid cell to inspect its Sen slope, confidence interval, Hamed–Rao sensitivity result and inferential status.</div>
 <p class="muted">Grid rows and columns follow the MODIS COG subset window. This is a spatial sample grid, not a political or street map.</p></div></div>
 </section>
-<h2>Time-series visualizations</h2>
+<h2 id="charts">Time-series visualizations</h2>
 {''.join(charts)}
-<h2>Cross-source monthly associations</h2>
+<h2 id="cross-source">Cross-source monthly associations</h2>
 <section class="panel">{cross_table}<p class="muted">Correlations are exploratory associations; they do not establish causation or validate one physical variable against another.</p></section>
-<h2>Methods and quality controls</h2>
+<h2 id="methods">Methods and quality controls</h2>
 <section class="panel">
 <ul>
 <li>NASA POWER daily 2 m air temperature and corrected precipitation.</li>
@@ -237,13 +239,27 @@ footer{{margin-top:34px;color:var(--muted);font-size:13px}}
 <li>After the AR(1) calibration audit, nonconstant Hamed–Rao p-values are withheld from the spatial Benjamini–Yekutieli inferential family. Only constant no-trend series retain p=1; iid p-values are reference-only.</li>
 <li>Pettitt single-change-point screening and robust median-absolute-deviation anomaly screening.</li>
 </ul></section>
-<h2>Interpretation limits</h2>
+<h2 id="limits">Interpretation limits</h2>
 <section class="caveat">
 The project-specific stationary Gaussian AR(1) calibration found that the current Hamed–Rao p-values do not maintain nominal 0.05 rejection rates across the tested sample sizes and autocorrelation coefficients. They remain sensitivity diagnostics only and are excluded from the spatial BY inferential family for nonconstant pixel series until the lag-selection method is recalibrated. iid p-values are reference-only. The benchmark does not assess Sen-interval coverage; intervals using the same modified variance remain approximate. Pettitt p-values remain unadjusted for serial dependence. NDVI measures vegetation greenness, not temperature or precipitation. POWER is gridded data, not a local weather-station record. Correlation does not prove causation. The spatial grid is a local sample, not a region-wide census.
 </section>
 <footer>Data sources: <a href="https://power.larc.nasa.gov/">NASA POWER</a>; <a href="https://doi.org/10.5067/MODIS/MOD13Q1.061">NASA LP DAAC MOD13Q1.061</a>; <a href="https://planetarycomputer.microsoft.com/api/stac/v1/collections/modis-13Q1-061">Microsoft Planetary Computer STAC collection</a>. Consult the repository README for citation, licensing notes and reproducibility instructions.</footer>
 <script>
 const reportData = {safe_report};
+const translations = {
+  en: {"nav-overview":"Overview","nav-spatial":"Spatial","nav-charts":"Charts","nav-methods":"Methods","hero-subtitle":"Explore quality-screened NASA satellite and climate observations","guide-title":"How to read this report","guide-text":"Start with the summary numbers, inspect the spatial grid and charts, then read the method limits before drawing conclusions. Blue means decreasing NDVI; orange means increasing NDVI. A blank cell means no estimate."},
+  ru: {"nav-overview":"Обзор","nav-spatial":"Пространство","nav-charts":"Графики","nav-methods":"Методы","hero-subtitle":"Изучайте проверенные спутниковые и климатические наблюдения NASA","guide-title":"Как читать этот отчёт","guide-text":"Сначала изучите сводные показатели, затем пространственную сетку и графики. Перед выводами прочитайте ограничения методов. Синий цвет означает снижение NDVI, оранжевый — рост. Пустая ячейка означает отсутствие оценки."}
+};
+let currentLanguage = "en";
+document.getElementById("language-toggle").addEventListener("click", () => {
+  currentLanguage = currentLanguage === "en" ? "ru" : "en";
+  for (const [id, value] of Object.entries(translations[currentLanguage])) {
+    const element = document.getElementById(id);
+    if (element) element.textContent = value;
+  }
+  document.getElementById("language-toggle").textContent = currentLanguage === "en" ? "Русский" : "English";
+  document.documentElement.lang = currentLanguage;
+});
 document.querySelectorAll(".pixel").forEach((cell) => {{
   cell.addEventListener("click", () => {{
     document.getElementById("pixel-detail").textContent = cell.dataset.info || "No details available.";
