@@ -42,3 +42,14 @@ AI tools assisted with implementation, code review, statistical-method review, a
 - USGS states there are no restrictions on use of Landsat products; cite the appropriate Level-2 dataset and retain the provider attribution.
 - Surface-reflectance scaling: DN × 0.0000275 − 0.2. The validation script uses QA_PIXEL bits for fill, dilated cloud, cirrus, cloud, cloud shadow, and snow, and excludes nonzero QA_RADSAT pixels. QA definitions: https://www.usgs.gov/landsat-missions/landsat-collection-2-quality-assessment-bands
 - The COGs are hosted through Microsoft Planetary Computer; do not assume the hosting service's terms are identical to the underlying USGS product terms. The project distributes derived statistics and citations, not source COG files.
+
+
+## NASA GPM IMERG Final Daily V07
+
+- Product: GPM IMERG Final Precipitation L3 1 day, 0.1° × 0.1°, Version 07.
+- DOI: https://doi.org/10.5067/GPM/IMERGDF/DAY/07
+- Dataset page: https://disc.gsfc.nasa.gov/datasets/GPM_3IMERGDF_07/summary
+- NASA GPM states that NASA-produced GPM data are freely available for public use; retain the product-specific citation and retrieval date.
+- The project adapter reads locally downloaded GES DISC subset NetCDF files. It does not redistribute source granules and does not bypass Earthdata Login.
+- Required attribution: Huffman, G.J.; Stocker, E.F.; Bolvin, D.T.; Nelkin, E.J.; Tan, J. (2023), *GPM IMERG Final Precipitation L3 1 day 0.1 degree x 0.1 degree V07*, NASA Goddard Earth Sciences Data and Information Services Center (GES DISC), DOI: 10.5067/GPM/IMERGDF/DAY/07.
+- NASA GPM data directory and usage information: https://gpm.nasa.gov/data/directory

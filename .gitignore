@@ -6,3 +6,6 @@ venv/
 artifacts/
 .pytest_cache/
 .coverage
+
+.netrc
+_netrc

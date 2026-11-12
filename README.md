@@ -107,3 +107,10 @@ After downloading and extracting a live-data artifact, run the offline residual 
 ## Independent Landsat cross-check
 
 The validation workflow also compares summer Landsat 8/9 Collection 2 Level-2 NDVI with the nearest quality-screened MOD13Q1 composite in the same Dushanbe window. Landsat pixels are screened with QA_PIXEL, QA_RADSAT, and SR_QA_AEROSOL (including high-aerosol rejection); sensor-date pairs more than 24 days apart are rejected. Run `python -m science_core.landsat_validation artifacts` after extracting the NASA artifact. The published first-run Landsat statistics remain provisional until the stricter aerosol-screened live validation is rerun. See [VALIDATION_REPORT.md](VALIDATION_REPORT.md) for methods, results, and limitations.
+
+
+## GPM IMERG Final Daily adapter (credential-gated)
+
+The repository now includes a local NetCDF ingestion adapter for NASA GPM IMERG Final Daily V07 (`GPM_3IMERGDF`). It validates the `precipitation` variable in mm/day, the `precipitation_cnt` half-hour completeness count, optional `randomError`, coordinate-grid consistency, UTC dates, source metadata, and SHA-256 provenance. It normalizes NetCDF dimension order and exports per-pixel annual coverage. Annual totals are emitted only when every calendar day is valid; incomplete years are not extrapolated.
+
+Run `python -m science_core.gpm_imerg --status` to check whether Earthdata credentials appear to be configured. This is a presence check, not authentication. The adapter does not bypass Earthdata Login and does not download remote granules; use the GES DISC subset interface to obtain local spatial/temporal NetCDF files, then run `python -m science_core.gpm_imerg --input-dir path/to/gpm_subset`. See [GPM_IMERG.md](GPM_IMERG.md). **No GPM observations or GPM trend results are currently included in the project.**

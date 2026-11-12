@@ -20,7 +20,8 @@ The pipeline is deliberately modular: the workflow is reusable, while scientific
 
 - **NASA POWER Daily** — 2 m air temperature (T2M) and corrected precipitation (PRECTOTCORR), daily point extraction.
 - **NASA MODIS/Terra MOD13Q1.061** — 250 m, 16-day NDVI and pixel-reliability data, accessed as cloud-optimized GeoTIFFs through the Microsoft Planetary Computer STAC collection.
-- **USGS Landsat 8/9 Collection 2 Level-2 Surface Reflectance** — 30 m red/NIR reflectance and QA bands, used as an independent cross-sensor consistency check for the overlapping 2013–2023 period.
+- **USGS Landsat 8/9 Collection 2 Level-2 Surface Reflectance** — 30 m red/NIR reflectance and QA bands, used as a cross-sensor consistency check for the overlapping 2013–2023 period.
+- **NASA GPM IMERG Final Daily V07 adapter** — local NetCDF ingestion for daily precipitation in mm/day, valid half-hour sample counts, random-error metadata, and strict complete-year aggregation. This adapter is implemented but has not yet processed GPM observations; it is not presented as a completed validation.
 
 The current demonstration samples a 17 × 17 MODIS pixel window around the selected location. One 16-day composite is selected per calendar month, nearest to mid-month. Only pixel-reliability code 0 is accepted. An annual pixel median requires at least three quality-screened monthly composites.
 
@@ -63,6 +64,7 @@ It also makes incomplete coverage visible. Years with insufficient monthly obser
 - Hamed–Rao correction is approximate and is not attempted for short, irregular or unestimable series. The five-year POWER window and Pettitt change-point p-values remain unadjusted for serial dependence.
 - Spatial BY q-values apply only to the eligible pixel family; they are not causal evidence and do not prove that all dependence has been removed.
 - The current spatial window is a local sample, not a region-wide census.
+- GPM IMERG has not yet been downloaded or analyzed. Its 0.1° grid is much coarser than MODIS NDVI, and mountainous terrain plus changing satellite constellation can affect precipitation estimates.
 - The Landsat cross-sensor comparison is a consistency check, not ground truth. Two of eleven selected years failed the valid-pixel threshold; n = 9 is too short for the configured Hamed–Rao correction, and the resulting nominal trend test is not significant.
 - The Planetary Computer STAC collection has its own license metadata; source redistribution must follow the current collection terms and NASA LP DAAC citation guidance.
 
@@ -70,7 +72,7 @@ It also makes incomplete coverage visible. Years with insufficient monthly obser
 
 1. Improve Landsat annual coverage by examining alternative summer scenes for the two failed years while preserving the documented high-aerosol and pixel-quality screens.
 2. Benchmark the Hamed–Rao implementation against controlled AR(1) simulations and an independent reference implementation; assess sensitivity to lag selection and missing years.
-3. Add an independent precipitation dataset such as GPM IMERG for a more direct precipitation cross-check.
+3. Obtain a spatially subsetted GPM IMERG Final Daily V07 NetCDF through authenticated GES DISC access, then compare its precipitation series with NASA POWER as a cross-source consistency check (not ground-truth validation).
 4. Add quality-screened MODIS land-surface temperature, clearly distinguished from 2 m air temperature.
 5. Expand from a local pixel window to a regional grid and evaluate sensitivity to spatial scale.
 6. Add a benchmark suite using synthetic series with known trends, change points, missingness and autocorrelation.

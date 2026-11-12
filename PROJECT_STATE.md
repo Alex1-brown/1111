@@ -1,6 +1,6 @@
 # Project state and handoff
 
-Last updated: 2026-11-11
+Last updated: 2026-11-12
 Repository: https://github.com/Alex1-brown/1111
 Branch: main
 Current HEAD: see the main branch for the live revision
@@ -38,7 +38,8 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 - `anomaly_analysis.py`: robust MAD anomaly screening.
 - `spatial_analysis.py`: annual per-pixel NDVI medians, coverage-based core period selection, fixed-panel annual summaries, per-pixel trends and BY q-values over eligible tests only.
 - `planetary_modis.py`: STAC search, monthly sampling, COG signing/window reads and quality screening.
-- `landsat_validation.py`: independent Landsat 8/9 C2 L2 NDVI cross-check with QA v3, full-window coverage checks, per-flag QA counts, paired MODIS comparisons and trend-direction diagnostics.
+- `landsat_validation.py`: Landsat 8/9 C2 L2 NDVI cross-check with QA v3, full-window coverage checks, per-flag QA counts (including rejected low-valid-pixel scenes), paired MODIS comparisons and trend-direction diagnostics.
+- `gpm_imerg.py`: credential-aware local GPM IMERG Final Daily V07 NetCDF reader, dimension/grid/version/unit checks, half-hour-count QC, SHA-256 provenance, and strict annual per-pixel coverage summaries. No GPM data have yet been downloaded or analyzed.
 - `cross_source_analysis.py`: monthly NDVI/POWER alignment and anomaly correlations.
 - `visualization.py`: dependency-free SVG charts.
 - `html_report.py`: standalone offline HTML report.
@@ -83,9 +84,9 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 
 ## Offline tests
 
-- Last completed offline CI run before the current change set: Python tests run #72, success, on commit c43b4dbcc16b42329f1e93b68a332a89cb3e88cc.
-- The current change set adds deterministic AR(1), irregular-spacing, seasonal-strata, spatial-eligibility and HTML-report regression tests. The resulting CI run must be checked after commit.
-- Live NASA data workflow remains manual-only to conserve Actions quota; no new live collection is needed for this statistical change.
+- Latest main-branch Python tests run #136 passed all 100 tests on the GPM adapter code snapshot; the workflow is linked from the current commit history.
+- The ten GPM-specific tests cover missing/present credential detection without secret disclosure, NetCDF dimension-order normalization and provenance, units, half-hour-count QC, duplicate dates, and complete-year aggregation.
+- The live NASA data workflow remains manual-only. No new live NASA collection was started for this adapter.
 
 ## Scientific caveats
 
@@ -101,10 +102,10 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 
 ## Immediate next steps
 
-1. Extend failure diagnostics so 2015/2016 QA flag counts are retained even when a scene fails the minimum-valid-pixel threshold; test alternative summer scenes without relaxing the high-aerosol screen.
+1. Run `python -m science_core.gpm_imerg --status` in the user's data environment; if credentials are available, obtain a spatially subsetted GPM_3IMERGDF V07 NetCDF through authenticated GES DISC access. Compare GPM and POWER only over matched UTC periods and after accounting for their different spatial support; call this a cross-source consistency check, not ground-truth validation.
 2. Benchmark Hamed–Rao against controlled positive/negative AR(1) simulations and an independent reference implementation; test lag-threshold sensitivity and missing-year patterns.
-3. Add GPM IMERG only after confirming the exact product/version, Earthdata authentication requirements, units, QA flags, temporal aggregation and license; report missing credentials rather than bypassing authentication.
-4. Add a sensitivity comparison for optional interpolated-aerosol exclusion, clearly reporting the effect on coverage and trend eligibility.
+3. Examine alternative Landsat summer scenes for 2015/2016 without relaxing the high-aerosol or pixel-quality screens.
+4. Add a sensitivity comparison for optional interpolated-aerosol exclusion, reporting coverage and trend eligibility.
 5. Prepare a reproducible challenge demo and final submission. Do not rerun NASA live data collection unless a material scientific change requires it.
 
 ## Work constraints

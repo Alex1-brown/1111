@@ -15,6 +15,8 @@ The project combines two NASA data streams:
 - **NASA Terra MODIS MOD13Q1.061:** 250 m, 16-day vegetation-index composites. The pipeline retrieves NDVI and pixel-reliability layers, applies the documented 0.0001 scale factor, and admits only reliability code 0 into the strict analysis.
 - **NASA POWER:** daily 2 m air temperature and corrected precipitation for a five-year recent comparison window.
 
+A credential-aware local ingestion adapter has also been implemented for **NASA GPM IMERG Final Daily V07**. It is not part of the current scientific results because no GPM granules have yet been obtained or analyzed.
+
 The pipeline selects one MODIS composite per calendar month, nearest to the middle of the month; checks that raster grids remain aligned; aggregates quality-screened observations into annual pixel medians; and selects a contiguous trend interval only when annual composite coverage meets the configured threshold.
 
 It then calculates per-pixel Sen slopes and Mann–Kendall trend statistics, applies Hamed–Rao variance correction only when the annual series meets the method's regularity and estimability requirements, and applies Benjamini–Yekutieli correction only to the eligible spatial hypothesis family. It also reports coverage, a fixed-pixel panel, change-point diagnostics, anomalies, and exploratory monthly comparisons with NASA POWER.
@@ -44,6 +46,7 @@ The default workflow is configured for a reproducible live data collection on Gi
 
 - NASA Terra MOD13Q1.061: https://doi.org/10.5067/MODIS/MOD13Q1.061
 - NASA POWER Daily API: https://power.larc.nasa.gov/docs/services/api/temporal/daily/
+- NASA GPM IMERG Final Daily V07: https://doi.org/10.5067/GPM/IMERGDF/DAY/07
 - NASA Space Apps challenge: https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/
 
 ### Limitations
@@ -58,6 +61,14 @@ AI tools assisted with software implementation, code review, statistical-method 
 
 The current Dushanbe run is accompanied by a residual circular moving-block bootstrap check using 2-, 3-, and 4-year blocks, with Benjamini–Yekutieli correction within each eligible pixel family. See [VALIDATION_REPORT.md](VALIDATION_REPORT.md). This is a sensitivity analysis, not an independent satellite validation or causal attribution.
 
-### Independent Landsat cross-sensor check
+### Landsat cross-sensor consistency check (QA v3)
 
-The same 4 km × 4 km window was checked with 11 USGS Landsat 8/9 Collection 2 Level-2 summer scenes (one per year, 2013–2023). The initial Landsat run (before the added aerosol-QA mask) estimated a Sen slope of −0.00402 NDVI/year (Kendall tau −0.60; Hamed–Rao MK p = 0.0127); these figures are provisional until the stricter live rerun completes. Residual moving-block bootstrap p-values were 0.0040, 0.00060, and 0.00020 for 2-, 3-, and 4-year blocks; all bootstrap slope intervals excluded zero. Landsat summer NDVI and July MODIS NDVI had Pearson r = 0.512 and Spearman rho = 0.473. This is cross-sensor consistency evidence, not ground truth or causal attribution; see [VALIDATION_REPORT.md](VALIDATION_REPORT.md).
+The same 4 km × 4 km window was checked with one selected Landsat 8/9 Collection 2 Level-2 summer scene per year from 2013–2023. QA policy v3 applies the documented QA_PIXEL, QA_RADSAT and SR_QA_AEROSOL filters, rejects high-aerosol pixels, retains interpolated-aerosol pixels by default while counting them, and requires full-window coverage. Nine of eleven selected years met the 500-valid-pixel minimum. The 2015 and 2016 scenes retained 225 and 3 valid pixels respectively and are treated as missing years, not zero NDVI.
+
+For the nine eligible Landsat years, Sen slope was −0.00279 NDVI/year, Kendall tau −0.500, Mann–Kendall p = 0.0763, and the nominal 95% Sen interval was [−0.00655, +0.00014]. The matched MODIS subset for those same nine years had Sen slope −0.00361 NDVI/year, p = 0.2515, and nominal 95% interval [−0.00561, +0.00270]. Neither trend is statistically significant at α = 0.05; both intervals include zero. Hamed–Rao and residual block-bootstrap inference were not run because n = 9 is below the documented ten-observation minimum. The paired window-median correlations were Pearson r = 0.375 and Spearman rho = 0.267; mean absolute difference was 0.0190 NDVI. These are descriptive cross-sensor consistency statistics, not pixel-wise accuracy or ground-truth validation. Do not use the earlier pre-QA-v3 Landsat trend and bootstrap numbers as current results.
+
+See [VALIDATION_REPORT.md](VALIDATION_REPORT.md) for per-year counts, the QA policy, source provenance, and the distinction between historical and current runs.
+
+### GPM IMERG adapter status
+
+The repository includes a local NetCDF reader for GPM_3IMERGDF V07, checking the daily precipitation variable in mm/day, the valid half-hour sample count, optional random-error metadata, coordinate-grid consistency, product version, UTC dates, and source-file SHA-256 hashes. Annual grid-cell totals are emitted only when every calendar day is valid; incomplete years are not extrapolated. Run `python -m science_core.gpm_imerg --status` to check whether Earthdata credentials appear configured, then use authenticated GES DISC spatial/temporal subsetting to obtain local files. This check only detects credential presence; it does not authenticate or download. No GPM observations, maps, trends, or GPM-versus-POWER comparison are claimed yet. See [GPM_IMERG.md](GPM_IMERG.md).
