@@ -19,8 +19,8 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 - Only MODIS pixel-reliability code 0 enters NDVI analysis.
 - Annual pixel medians require at least 3 quality-screened monthly composites per pixel-year.
 - The pipeline automatically selects the longest contiguous trend period with at least 11 monthly composites/year. The current data snapshot at this location yields a core period of 2003-2023. Incomplete edge years 2001-2002 and 2024-2025 are excluded from long-term trend inference.
-- Per-pixel Sen slopes and nominal 95% intervals. For at least 10 equally spaced observations, Hamed–Rao (1998) modified Mann–Kendall variance correction uses significant autocorrelations of detrended ranks; the same modified variance is used for the Sen interval.
-- Spatial BY q-values are computed only over temporally eligible pixel p-values. Irregular/short/unestimable series retain descriptive slopes and iid reference p-values but have null adjusted p-values and q-values. The correction remains approximate.
+- Per-pixel Sen slopes and nominal 95% intervals. For at least 10 equally spaced observations, Hamed–Rao (1998) variance correction is computed as a sensitivity diagnostic.
+- The fixed-seed AR(1) calibration showed non-nominal rejection rates under several zero-trend null scenarios. Nonconstant Hamed–Rao p-values are therefore withheld from spatial inference; iid p-values remain reference-only, and nonconstant pixel p/q fields are null until a calibrated method is established.
 - Annual aggregate NDVI uses a fixed set of pixels present in every year of the core period, preventing changing spatial coverage from driving the overall trend.
 - Pettitt change-point screening and robust MAD anomaly screening for annual series.
 - Monthly NDVI/POWER cross-source anomaly correlations are restricted to the core period overlap; exploratory association only, not validation or causation.
@@ -36,7 +36,7 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 - `trend_analysis.py`: Mann–Kendall, Sen slope, nominal 95% Sen intervals and Hamed–Rao modified variance correction for eligible regular series.
 - `change_point.py`: Pettitt single change-point test.
 - `anomaly_analysis.py`: robust MAD anomaly screening.
-- `spatial_analysis.py`: annual per-pixel NDVI medians, coverage-based core period selection, fixed-panel annual summaries, per-pixel trends and BY q-values over eligible tests only.
+- `spatial_analysis.py`: annual per-pixel NDVI medians, coverage-based core period selection, fixed-panel annual summaries, per-pixel Sen slopes, Hamed–Rao sensitivity diagnostics and a conservative inference gate.
 - `planetary_modis.py`: STAC search, monthly sampling, COG signing/window reads and quality screening.
 - `landsat_validation.py`: Landsat 8/9 C2 L2 NDVI cross-check with QA v3, full-window coverage checks, per-flag QA counts (including rejected low-valid-pixel scenes), paired MODIS comparisons and trend-direction diagnostics.
 - `gpm_imerg.py`: credential-aware local GPM IMERG Final Daily V07 NetCDF reader, dimension/grid/version/unit checks, half-hour-count QC, SHA-256 provenance, and strict annual per-pixel coverage summaries. No GPM data have yet been downloaded or analyzed.
@@ -84,7 +84,7 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 
 ## Offline tests
 
-- Latest main-branch Python tests run #136 passed all 100 tests on the GPM adapter code snapshot; the workflow is linked from the current commit history.
+- Latest GPM-adapter main-branch run #43176506577 passed all 100 tests. The serial-correlation audit PR test run #43179105801 passed all 104 tests.
 - The ten GPM-specific tests cover missing/present credential detection without secret disclosure, NetCDF dimension-order normalization and provenance, units, half-hour-count QC, duplicate dates, and complete-year aggregation.
 - The live NASA data workflow remains manual-only. No new live NASA collection was started for this adapter.
 
@@ -94,16 +94,23 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 - MOD13Q1 NDVI is a vegetation index, not temperature or precipitation.
 - NDVI and POWER have different spatial support.
 - Monthly correlations do not establish causation or validate either source.
-- Hamed–Rao variance correction is approximate and only attempted for at least 10 equally spaced observations with estimable detrended-rank autocorrelation. Short/irregular series are excluded from the spatial BY family.
+- The current Hamed–Rao implementation failed nominal 5% calibration in several tested Gaussian AR(1) null scenarios. Its p-values are now sensitivity-only and excluded from the spatial BY family for nonconstant pixels. The Sen interval variance approximation is also not independently calibrated.
 - Pettitt p-values remain unadjusted for serial dependence. Five-year POWER annual/seasonal summaries are too short for the Hamed–Rao correction and remain exploratory.
-- BY q-values are conditional on the eligible pixel family; they do not establish causation or guarantee that all dependence is removed.
+- Spatial BY q-values are currently withheld for nonconstant pixel series because the current Hamed–Rao p-values failed the project-specific AR(1) calibration. A q-value adjustment cannot repair miscalibrated input p-values.
 - The spatial subset is a local sample, not a region-wide census.
 - Planetary Computer STAC collection license metadata must be followed; do not assume the hosted collection is public-domain simply because the source product is NASA.
+
+## Serial-correlation calibration audit (2026-11-12)
+
+- The benchmark module ran 2,000 replicates for each of ten stationary Gaussian AR(1) null scenarios (n=20/60; phi=-0.7,-0.4,0,+0.4,+0.7). White-noise false-positive rates for the current reported p-value were 7.75% and 9.00%, with 95% Wilson intervals excluding 5%; several other scenarios were also materially above nominal.
+- Based on that result, Hamed–Rao p-values are retained only as sensitivity diagnostics. Nonconstant pixel p-values and BY q-values are withheld pending a calibrated method; the HTML report and CSV now distinguish sensitivity p-values from inferential p-values.
+- The block-bootstrap validator now selects temporally eligible pixels independently of the Hamed–Rao inferential gate and reports short/gapped exclusions explicitly.
+- Benchmark artifact: https://github.com/Alex1-brown/1111/actions/runs/43179095375/artifacts/13925202462. This is statistical method testing, not satellite-data simulation.
 
 ## Immediate next steps
 
 1. Run `python -m science_core.gpm_imerg --status` in the user's data environment; if credentials are available, obtain a spatially subsetted GPM_3IMERGDF V07 NetCDF through authenticated GES DISC access. Compare GPM and POWER only over matched UTC periods and after accounting for their different spatial support; call this a cross-source consistency check, not ground-truth validation.
-2. Benchmark Hamed–Rao against controlled positive/negative AR(1) simulations and an independent reference implementation; test lag-threshold sensitivity and missing-year patterns.
+2. Test alternative lag thresholds and autocorrelation methods; only restore nonconstant spatial p/q inference after an independent calibration demonstrates acceptable error control. Validate block-bootstrap calibration and interval coverage.
 3. Examine alternative Landsat summer scenes for 2015/2016 without relaxing the high-aerosol or pixel-quality screens.
 4. Add a sensitivity comparison for optional interpolated-aerosol exclusion, reporting coverage and trend eligibility.
 5. Prepare a reproducible challenge demo and final submission. Do not rerun NASA live data collection unless a material scientific change requires it.

@@ -75,12 +75,13 @@ def analyze_pixel_trends(
     annual_values: Mapping[tuple[int, int], list[tuple[int, float]]],
     minimum_years: int = 15,
 ) -> list[dict[str, object]]:
-    """Estimate per-pixel Sen slopes and apply BY only to eligible p-values.
+    """Estimate per-pixel Sen slopes; withhold Hamed-Rao inference pending calibration.
 
-    A pixel enters the inferential family only when Hamed-Rao correction was
-    estimable for its regularly spaced annual series, or when the series is
-    exactly constant (p=1). Slopes and iid p-values remain available for
-    ineligible pixels, but their adjusted p-value and BY q-value are null.
+    The AR(1) calibration audit found that the current Hamed-Rao plug-in
+    p-values are not calibrated at nominal alpha across the tested null models.
+    Nonconstant series therefore retain Hamed-Rao and iid p-values as
+    diagnostics only and do not enter the spatial BY family. Constant series
+    have p=1 and may remain as explicit no-trend entries.
     """
     if minimum_years < 3:
         raise ValueError("minimum_years must be at least 3.")
@@ -98,7 +99,7 @@ def analyze_pixel_trends(
         constant_series = bool(ordered) and all(
             value == ordered[0][1] for _, value in ordered
         )
-        inferential_eligible = bool(result["serial_correlation_adjusted"] or constant_series)
+        inferential_eligible = bool(constant_series)
         provisional.append({
             "row": int(row),
             "column": int(col),
@@ -110,13 +111,22 @@ def analyze_pixel_trends(
             "sen_slope_ci_95_upper_ndvi_per_year": result["sen_slope_ci_95_upper_per_year"],
             "sen_slope_ci_95_method": result["sen_slope_ci_95_method"],
             "kendall_tau": result["kendall_tau"],
-            "p_value": result["p_value_two_sided"] if inferential_eligible else None,
+            "p_value": 1.0 if constant_series else None,
+            "p_value_hamed_rao_sensitivity": (
+                result["p_value_two_sided"] if result["serial_correlation_adjusted"] else None
+            ),
             "p_value_iid": result["p_value_two_sided_iid"],
             "trend_method": result["method"],
             "serial_correlation_adjusted": result["serial_correlation_adjusted"],
             "serial_correlation_status": result["serial_correlation_status"],
             "serial_correlation_variance_factor": result["serial_correlation_variance_factor"],
             "serial_correlation_lags_used": result["serial_correlation_lags_used"],
+            "temporal_eligible": True,
+            "statistical_inference_status": (
+                "constant_series_no_trend"
+                if constant_series else
+                "withheld_pending_serial_correlation_calibration"
+            ),
             "inferential_eligible": inferential_eligible,
         })
     q_values = benjamini_yekutieli([item["p_value"] for item in provisional])

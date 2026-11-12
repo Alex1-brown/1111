@@ -1,0 +1,38 @@
+name: Serial-correlation calibration
+
+on:
+  push:
+    branches: ["benchmark/**"]
+    paths:
+      - "science_core/serial_correlation_benchmark.py"
+      - "science_core/trend_analysis.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ar1-calibration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run deterministic AR(1) calibration
+        run: |
+          python -m science_core.serial_correlation_benchmark \
+            --n 20 60 \
+            --phi -0.7 -0.4 0 0.4 0.7 \
+            --replicates 2000 \
+            --seed 20261112 \
+            --output artifacts/serial_correlation_calibration.json
+      - name: Upload calibration report
+        uses: actions/upload-artifact@v4
+        with:
+          name: serial-correlation-calibration
+          path: artifacts/serial_correlation_calibration.json
+          if-no-files-found: error
+          retention-days: 14

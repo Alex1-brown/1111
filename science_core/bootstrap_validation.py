@@ -3,8 +3,9 @@
 Run after extracting a NASA live-data artifact:
     python -m science_core.bootstrap_validation artifacts --spatial-replicates 5000
 
-This is a sensitivity analysis alongside (not a replacement for) the primary
-Hamed-Rao + Benjamini-Yekutieli workflow.
+This is a sensitivity analysis. Hamed-Rao p-values are retained only as
+diagnostics pending empirical calibration; block-bootstrap p-values are
+adjusted within their own complete, consecutive pixel family.
 """
 from __future__ import annotations
 
@@ -169,7 +170,14 @@ def validate_artifact(
 
     with trends_path.open(newline="", encoding="utf-8") as stream:
         trend_rows = list(csv.DictReader(stream))
-    eligible = [item for item in trend_rows if item.get("inferential_eligible") == "True"]
+    eligible = [
+        item for item in trend_rows
+        if item.get("temporal_eligible") == "True"
+        or (
+            item.get("temporal_eligible") is None
+            and item.get("inferential_eligible") == "True"
+        )
+    ]
     if not eligible:
         raise ValueError("No temporally eligible pixels were found in the trend table.")
 
@@ -180,21 +188,29 @@ def validate_artifact(
         length: set() for length in block_lengths
     }
 
+    skipped_short_or_gapped = 0
     for item in eligible:
         row, column = int(item["row"]), int(item["column"])
         series = annual_pixels.get((row, column), {})
         years = np.asarray(sorted(series), dtype=float)
         values = np.asarray([series[int(year)] for year in years], dtype=float)
         if len(years) < 10 or np.any(np.diff(years) != 1):
+            skipped_short_or_gapped += 1
             continue
 
+        hamed_rao_p = item.get("p_value_hamed_rao_sensitivity")
+        hamed_rao_q = item.get("q_value_by")
         record: dict[str, object] = {
             "row": row,
             "column": column,
             "years": len(years),
             "sen_slope_ndvi_per_year": sen_slope(years, values),
-            "hamed_rao_p_value": float(item["p_value"]),
-            "hamed_rao_q_value_by": float(item["q_value_by"]),
+            "hamed_rao_p_value_sensitivity": (
+                float(hamed_rao_p) if hamed_rao_p not in (None, "") else None
+            ),
+            "hamed_rao_q_value_by": (
+                float(hamed_rao_q) if hamed_rao_q not in (None, "") else None
+            ),
         }
         if item.get("by_q_le_0_05_in_eligible_family") == "True":
             hamed_rao_significant.add((row, column))
@@ -210,10 +226,10 @@ def validate_artifact(
             bootstrap_p[length].append(float(result["p_value"]))
         per_pixel.append(record)
 
-    if len(per_pixel) != len(eligible):
+    if not per_pixel:
         raise ValueError(
-            f"Bootstrap series count ({len(per_pixel)}) does not match eligible family "
-            f"({len(eligible)}); inspect annual gaps or quality thresholds."
+            "No temporally eligible pixels have at least ten consecutive annual observations "
+            "after quality filtering; no bootstrap family was tested."
         )
 
     q_by_length = {
@@ -269,7 +285,9 @@ def validate_artifact(
             "temporally eligible pixel family. This is a sensitivity analysis."
         ),
         "study_period": [start_year, end_year],
-        "eligible_pixel_family": len(per_pixel),
+        "temporally_eligible_pixel_count": len(eligible),
+        "bootstrap_eligible_pixel_family": len(per_pixel),
+        "skipped_short_or_gapped_series": skipped_short_or_gapped,
         "spatial_replicates_per_pixel": spatial_replicates,
         "fixed_panel_replicates": fixed_panel_replicates,
         "block_lengths_years": list(block_lengths),
@@ -289,6 +307,8 @@ def validate_artifact(
             "Circular block length is a sensitivity parameter; results are reported for multiple lengths.",
             "The bootstrap is a robustness check, not a replacement for the primary Hamed-Rao analysis.",
             "BY correction is applied separately within each bootstrap block-length family.",
+            "Hamed-Rao p-values are diagnostic only and are excluded from the primary spatial BY family pending AR(1) calibration.",
+            "Bootstrap results apply only to pixels with at least ten consecutive annual observations and adequate quality coverage.",
         ],
     }
     out_json = root / "modis_ndvi" / "ndvi_block_bootstrap_validation.json"

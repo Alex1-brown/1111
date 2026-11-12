@@ -37,7 +37,8 @@ class HTMLReportTests(unittest.TestCase):
                 {"row": 0, "column": 0, "sen_slope_ndvi_per_year": -0.01,
                  "sen_slope_ci_95_lower_ndvi_per_year": -0.015,
                  "sen_slope_ci_95_upper_ndvi_per_year": -0.005,
-                 "q_value_by": 0.02, "years": 20,
+                 "q_value_by": None, "p_value_hamed_rao_sensitivity": 0.02,
+                 "temporal_eligible": True, "inferential_eligible": False, "years": 20,
                  "serial_correlation_adjusted": True,
                  "serial_correlation_status": "applied",
                  "sen_slope_ci_95_method": "Hamed-Rao modified variance"},
@@ -52,10 +53,12 @@ class HTMLReportTests(unittest.TestCase):
             html = render_html_report(report, trends, {"annual_ndvi.svg": str(chart)})
             self.assertIn("Earth System Trend Detective", html)
             self.assertIn("Select a grid cell", html)
-            self.assertIn("temporal autocorrelation", html)
+            self.assertIn("Hamed–Rao p-values are diagnostic only", html)
             self.assertIn("nominal 95% CI", html)
             self.assertIn("[-0.01500, -0.00500] NDVI/year", html)
-            self.assertIn("Hamed-Rao variance correction applied", html)
+            self.assertIn("Hamed-Rao variance sensitivity computed", html)
+            self.assertIn("Hamed-Rao sensitivity p-value 0.02 is diagnostic only", html)
+            self.assertIn("withheld pending Hamed-Rao calibration", html)
             self.assertIn("not eligible for adjusted inference", html)
             self.assertIn("2018", html)
             self.assertIn("2003–2023", html)

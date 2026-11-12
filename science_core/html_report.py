@@ -65,6 +65,8 @@ def render_html_report(
                 color = _blend(base, abs(slope) / max_abs_slope)
             q = trend.get("q_value_by")
             q_text = (
+                "withheld pending Hamed-Rao calibration"
+                if q is None and trend.get("temporal_eligible") else
                 "not estimated (not eligible for adjusted inference)"
                 if q is None else f"{float(q):.4g}"
             )
@@ -79,7 +81,7 @@ def render_html_report(
             years = trend.get("years", "n/a")
             status = trend.get("serial_correlation_status", "not evaluated")
             if trend.get("serial_correlation_adjusted"):
-                dependence_text = "Hamed-Rao variance correction applied"
+                dependence_text = "Hamed-Rao variance sensitivity computed; not used for inference"
             elif status == "constant_series_no_trend":
                 dependence_text = "constant series; no trend inference needed"
             else:
@@ -89,10 +91,16 @@ def render_html_report(
                 f" Unadjusted iid p-value {float(iid_p):.4g} is shown for reference only."
                 if q is None and iid_p is not None else ""
             )
+            hamed_rao_p = trend.get("p_value_hamed_rao_sensitivity")
+            hamed_rao_text = (
+                f" Hamed-Rao sensitivity p-value {float(hamed_rao_p):.4g} is diagnostic only "
+                "and excluded from the BY inferential family pending calibration."
+                if hamed_rao_p is not None else ""
+            )
             info = (
                 f"Pixel row {row}, column {column}; Sen slope {slope_text}; "
                 f"nominal 95% CI {ci_text}; CI method: {ci_method}; BY q-value {q_text}; "
-                f"annual observations {years}; {dependence_text}.{iid_text}"
+                f"annual observations {years}; {dependence_text}.{hamed_rao_text}{iid_text}"
             )
             cells.append(
                 f"<button class='pixel' type='button' style='background:{color}' "
@@ -210,8 +218,8 @@ footer{{margin-top:34px;color:var(--muted);font-size:13px}}
 <div class="legend"><span><i class="swatch" style="background:#2563eb"></i>NDVI decreasing</span>
 <span><i class="swatch" style="background:#dc6923"></i>NDVI increasing</span>
 <span><i class="swatch" style="background:#d1d5db"></i>No trend estimate</span></div>
-<p class="muted">Cell colour encodes Sen slope direction and magnitude, not statistical significance. BY q-values are shown only for temporally eligible pixel series.</p>
-<div class="grid-wrap"><div>{grid_html}</div><div><h3>Pixel details</h3><div id="pixel-detail">Select a grid cell to inspect its Sen slope, confidence interval, temporal-correction status and eligible BY q-value.</div>
+<p class="muted">Cell colour encodes Sen slope direction and magnitude, not statistical significance. Hamed–Rao p-values are diagnostic only; nonconstant pixel series are excluded from the BY inferential family pending calibration.</p>
+<div class="grid-wrap"><div>{grid_html}</div><div><h3>Pixel details</h3><div id="pixel-detail">Select a grid cell to inspect its Sen slope, confidence interval, Hamed–Rao sensitivity result and inferential status.</div>
 <p class="muted">Grid rows and columns follow the MODIS COG subset window. This is a spatial sample grid, not a political or street map.</p></div></div>
 </section>
 <h2>Time-series visualizations</h2>
@@ -225,13 +233,13 @@ footer{{margin-top:34px;color:var(--muted);font-size:13px}}
 <li>NASA MODIS/Terra MOD13Q1.061 250 m NDVI, one 16-day composite selected per calendar month.</li>
 <li>Only pixel-reliability code 0 enters NDVI analysis; annual pixel medians require at least three valid composites.</li>
 <li>Annual spatial summaries use a fixed pixel cohort present in every requested year; changing coverage is shown separately.</li>
-<li>Per-pixel Sen slopes and intervals; Hamed–Rao modified Mann–Kendall variance correction is attempted only for at least ten equally spaced observations with estimable detrended-rank autocorrelation.</li>
-<li>Benjamini–Yekutieli q-values are calculated only across temporally eligible pixel tests; ineligible pixels retain descriptive slopes and iid reference p-values but no adjusted p-value or q-value.</li>
+<li>Per-pixel Sen slopes and intervals; Hamed–Rao modified Mann–Kendall p-values are retained as sensitivity diagnostics for at least ten equally spaced observations with estimable detrended-rank autocorrelation.</li>
+<li>After the AR(1) calibration audit, nonconstant Hamed–Rao p-values are withheld from the spatial Benjamini–Yekutieli inferential family. Only constant no-trend series retain p=1; iid p-values are reference-only.</li>
 <li>Pettitt single-change-point screening and robust median-absolute-deviation anomaly screening.</li>
 </ul></section>
 <h2>Interpretation limits</h2>
 <section class="caveat">
-The Hamed–Rao (1998) detrended-rank variance correction is an approximate adjustment for temporal autocorrelation and is used only when a series has at least ten equally spaced observations and an estimable rank autocorrelation function. Short, irregular or otherwise ineligible series receive no temporally adjusted p-value and are excluded from the spatial BY family; their iid p-values are reference-only. The correction does not guarantee that all dependence is removed. Pettitt p-values remain unadjusted. Sen-slope intervals use the same modified variance only where the correction is applied; otherwise they are nominal iid intervals. NDVI measures vegetation greenness, not temperature or precipitation. POWER is gridded data, not a local weather-station record. Correlation does not prove causation. The spatial grid is a local sample, not a region-wide census.
+The project-specific stationary Gaussian AR(1) calibration found that the current Hamed–Rao p-values do not maintain nominal 0.05 rejection rates across the tested sample sizes and autocorrelation coefficients. They remain sensitivity diagnostics only and are excluded from the spatial BY inferential family for nonconstant pixel series until the lag-selection method is recalibrated. iid p-values are reference-only. The benchmark does not assess Sen-interval coverage; intervals using the same modified variance remain approximate. Pettitt p-values remain unadjusted for serial dependence. NDVI measures vegetation greenness, not temperature or precipitation. POWER is gridded data, not a local weather-station record. Correlation does not prove causation. The spatial grid is a local sample, not a region-wide census.
 </section>
 <footer>Data sources: <a href="https://power.larc.nasa.gov/">NASA POWER</a>; <a href="https://doi.org/10.5067/MODIS/MOD13Q1.061">NASA LP DAAC MOD13Q1.061</a>; <a href="https://planetarycomputer.microsoft.com/api/stac/v1/collections/modis-13Q1-061">Microsoft Planetary Computer STAC collection</a>. Consult the repository README for citation, licensing notes and reproducibility instructions.</footer>
 <script>
