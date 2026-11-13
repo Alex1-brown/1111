@@ -247,8 +247,42 @@ The project-specific stationary Gaussian AR(1) calibration found that the curren
 <script>
 const reportData = {safe_report};
 const translations = {{
-  en: {{"nav-overview":"Overview","nav-spatial":"Spatial","nav-charts":"Charts","nav-methods":"Methods","hero-subtitle":"Explore quality-screened NASA satellite and climate observations","guide-title":"How to read this report","guide-text":"Start with the summary numbers, inspect the spatial grid and charts, then read the method limits before drawing conclusions. Blue means decreasing NDVI; orange means increasing NDVI. A blank cell means no estimate."}},
-  ru: {{"nav-overview":"Обзор","nav-spatial":"Пространство","nav-charts":"Графики","nav-methods":"Методы","hero-subtitle":"Изучайте проверенные спутниковые и климатические наблюдения NASA","guide-title":"Как читать этот отчёт","guide-text":"Сначала изучите сводные показатели, затем пространственную сетку и графики. Перед выводами прочитайте ограничения методов. Синий цвет означает снижение NDVI, оранжевый — рост. Пустая ячейка означает отсутствие оценки."}}
+  en: {{
+    "nav-overview":"Overview","nav-spatial":"Spatial","nav-charts":"Charts","nav-methods":"Methods",
+    "hero-subtitle":"Explore quality-screened NASA satellite and climate observations",
+    "guide-title":"How to read this report","guide-text":"Start with the summary numbers, inspect the spatial grid and charts, then read the method limits before drawing conclusions. Blue means decreasing NDVI; orange means increasing NDVI. A blank cell means no estimate.",
+    "spatial":"Spatial NDVI trend grid","charts":"Time-series visualizations","cross-source":"Cross-source monthly associations","methods":"Methods and quality controls","limits":"Interpretation limits",
+    "metric-composites":"Monthly MODIS composites selected","metric-available":"Available 16-day MODIS composites","metric-pixels":"Pixels in fixed annual panel","metric-days":"Paired NASA POWER days","metric-months":"Common monthly observations","metric-period":"MODIS core trend period","metric-change":"Pettitt candidate change year",
+    "legend-decrease":"NDVI decreasing","legend-increase":"NDVI increasing","legend-missing":"No trend estimate",
+    "grid-explanation":"Cell colour encodes descriptive Sen slope direction and magnitude, not statistical significance. Hamed–Rao and residual block-bootstrap p/q values are diagnostic only; nonconstant pixel series are excluded from the BY inferential family pending calibration.",
+    "pixel-title":"Pixel details","grid-note":"Grid rows and columns follow the MODIS COG subset window. This is a spatial sample grid, not a political or street map.",
+    "cross-note":"Correlations are exploratory associations; they do not establish causation or validate one physical variable against another.",
+    "method-power":"NASA POWER daily 2 m air temperature and corrected precipitation.",
+    "method-modis":"NASA MODIS/Terra MOD13Q1.061 250 m NDVI, one 16-day composite selected per calendar month.",
+    "method-quality":"Only pixel-reliability code 0 enters NDVI analysis; annual pixel medians require at least three valid composites.",
+    "method-panel":"Annual spatial summaries use a fixed pixel cohort present in every requested year; changing coverage is shown separately.",
+    "method-sen":"Per-pixel Sen slopes are descriptive. Hamed–Rao and residual moving-block bootstrap p/q values and percentile intervals are sensitivity diagnostics only; neither current method is calibrated for inferential use.",
+    "method-inference":"After the AR(1) calibration audit, nonconstant Hamed–Rao p-values are withheld from the spatial Benjamini–Yekutieli inferential family. Only constant no-trend series retain p=1; iid p-values are reference-only.",
+    "method-screening":"Pettitt single-change-point screening and robust median-absolute-deviation anomaly screening."
+  }},
+  ru: {{
+    "nav-overview":"Обзор","nav-spatial":"Карта трендов","nav-charts":"Графики","nav-methods":"Методы",
+    "hero-subtitle":"Анализ проверенных спутниковых и климатических данных NASA",
+    "guide-title":"Как читать этот отчёт","guide-text":"Сначала изучите сводные показатели, затем пространственную сетку и графики. Перед выводами прочитайте ограничения методов. Синий цвет означает снижение NDVI, оранжевый — рост. Пустая ячейка означает отсутствие оценки.",
+    "spatial":"Пространственные тренды NDVI","charts":"Временные ряды","cross-source":"Связь данных разных источников","methods":"Методы и контроль качества","limits":"Ограничения интерпретации",
+    "metric-composites":"Выбранные месячные композиты MODIS","metric-available":"Доступные 16-дневные композиты MODIS","metric-pixels":"Пиксели в фиксированной годовой выборке","metric-days":"Совпадающие дни NASA POWER","metric-months":"Общие месячные наблюдения","metric-period":"Основной период тренда MODIS","metric-change":"Предполагаемый год изменения по Питтиту",
+    "legend-decrease":"Снижение NDVI","legend-increase":"Рост NDVI","legend-missing":"Нет оценки тренда",
+    "grid-explanation":"Цвет ячейки показывает направление и величину описательного наклона Сена, а не статистическую значимость. Значения p/q методов Хамеда—Рао и блочного бутстрэпа являются только диагностическими; непостоянные ряды пикселей исключены из проверки BY до калибровки.",
+    "pixel-title":"Сведения о пикселе","grid-note":"Строки и столбцы соответствуют окну выборки MODIS COG. Это пространственная выборка, а не политическая или уличная карта.",
+    "cross-note":"Корреляции показывают исследовательские связи, но не доказывают причинность и не подтверждают точность одной физической переменной через другую.",
+    "method-power":"Ежедневная температура воздуха на высоте 2 м и скорректированные осадки NASA POWER.",
+    "method-modis":"NDVI NASA MODIS/Terra MOD13Q1.061 с разрешением 250 м; один 16-дневный композит выбирается для каждого календарного месяца.",
+    "method-quality":"В анализ NDVI включаются только пиксели с кодом надёжности 0; годовая медиана требует не менее трёх качественных композитов.",
+    "method-panel":"Годовые пространственные сводки используют постоянный набор пикселей, присутствующих во все годы; изменение покрытия показывается отдельно.",
+    "method-sen":"Наклоны Сена для пикселей являются описательными. Значения p/q и интервалы методов Хамеда—Рао и блочного бутстрэпа используются только для анализа чувствительности: ни один из методов пока не откалиброван для статистических выводов.",
+    "method-inference":"После проверки AR(1) неконстантные p-значения Хамеда—Рао исключены из пространственного семейства проверки Бенджамини—Йекутиели. Для постоянных рядов без тренда сохраняется p=1; значения iid приводятся только для справки.",
+    "method-screening":"Поиск одной точки изменения методом Питтита и выявление аномалий по медианному абсолютному отклонению."
+  }}
 }};
 let currentLanguage = "en";
 document.getElementById("language-toggle").addEventListener("click", () => {{
