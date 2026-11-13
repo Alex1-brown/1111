@@ -19,7 +19,7 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 - Only MODIS pixel-reliability code 0 enters NDVI analysis.
 - Annual pixel medians require at least 3 quality-screened monthly composites per pixel-year.
 - The pipeline automatically selects the longest contiguous trend period with at least 11 monthly composites/year. The current data snapshot at this location yields a core period of 2003-2023. Incomplete edge years 2001-2002 and 2024-2025 are excluded from long-term trend inference.
-- Per-pixel Sen slopes and nominal 95% intervals. For at least 10 equally spaced observations, Hamed–Rao (1998) variance correction is computed as a sensitivity diagnostic.
+- Per-pixel Sen slopes are descriptive effect-size estimates. Hamed–Rao variance-based intervals and p-values are nominal sensitivity diagnostics only; their calibration is not established.
 - The fixed-seed AR(1) calibration showed non-nominal rejection rates under several zero-trend null scenarios. Nonconstant Hamed–Rao p-values are therefore withheld from spatial inference; iid p-values remain reference-only, and nonconstant pixel p/q fields are null until a calibrated method is established.
 - The 2026-11-13 residual moving-block bootstrap calibration (n=20/60, phi=-0.4/0/+0.4/+0.7, block lengths 2/3/4; 200 outer × 399 inner replicates) found null rejection rates of 1.5–26.0% and nominal 95% Sen-interval coverage of 60.5–93.0%. Its p-values, BY transforms and intervals are sensitivity-only; BY cannot repair uncalibrated p-values. Nonconstant spatial p/q inference remains withheld.
 - Annual aggregate NDVI uses a fixed set of pixels present in every year of the core period, preventing changing spatial coverage from driving the overall trend.
@@ -34,7 +34,8 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 - `science_core/pipeline.py`, `principles.py`: six-stage orchestration.
 - `analysis.py`: NASA POWER validation and descriptive summaries.
 - `statistical_analysis.py`: annual/monthly/seasonal POWER summaries, descriptive OLS and correlations.
-- `trend_analysis.py`: Mann–Kendall, Sen slope, nominal 95% Sen intervals and Hamed–Rao modified variance diagnostics for eligible regular series.
+- `trend_analysis.py`: Mann–Kendall, Sen slope, nominal Sen intervals and Hamed–Rao modified variance diagnostics for eligible regular series.
+- `block_bootstrap_benchmark.py`: reproducible AR(1) type-I-error and Sen-interval coverage benchmark for the existing residual moving-block bootstrap.
 - `block_bootstrap_benchmark.py`: reproducible AR(1) type-I-error and Sen-interval coverage benchmark for the existing residual moving-block bootstrap.
 - `change_point.py`: Pettitt single change-point test.
 - `anomaly_analysis.py`: robust MAD anomaly screening.
@@ -100,7 +101,7 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 - The current Hamed–Rao implementation failed nominal 5% calibration in several tested Gaussian AR(1) null scenarios. Its p-values are now sensitivity-only and excluded from the spatial BY family for nonconstant pixels. The Sen interval variance approximation is also not independently calibrated.
 - The current residual moving-block bootstrap also failed AR(1) calibration: rejection rates were as high as 26%, and nominal 95% Sen-interval coverage was as low as 60.5%. Its p/q values and intervals are diagnostic only. Do not describe old bootstrap BY counts as significant.
 - Pettitt p-values remain unadjusted for serial dependence. Five-year POWER annual/seasonal summaries are too short for the Hamed–Rao correction and remain exploratory.
-- Spatial BY q-values are currently withheld for nonconstant pixel series because the current Hamed–Rao p-values failed the project-specific AR(1) calibration. A q-value adjustment cannot repair miscalibrated input p-values.
+- Spatial BY q-values are currently withheld for nonconstant pixel series because both the current Hamed–Rao and residual moving-block bootstrap p-values failed project-specific AR(1) calibration. A q-value adjustment cannot repair miscalibrated input p-values.
 - The spatial subset is a local sample, not a region-wide census.
 - Planetary Computer STAC collection license metadata must be followed; do not assume the hosted collection is public-domain simply because the source product is NASA.
 
