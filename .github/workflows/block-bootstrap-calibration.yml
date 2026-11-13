@@ -1,0 +1,48 @@
+name: Block-bootstrap calibration
+
+on:
+  push:
+    branches: ["benchmark/block-bootstrap-20261113"]
+    paths:
+      - ".github/workflows/block-bootstrap-calibration.yml"
+      - "science_core/block_bootstrap_benchmark.py"
+      - "science_core/bootstrap_validation.py"
+      - "science_core/serial_correlation_benchmark.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  calibration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install project dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+      - name: Run offline unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Calibrate residual moving-block bootstrap
+        run: |
+          python -m science_core.block_bootstrap_benchmark \
+            --n 20 60 \
+            --phi -0.4 0 0.4 0.7 \
+            --block-lengths 2 3 4 \
+            --outer-replicates 200 \
+            --bootstrap-replicates 399 \
+            --seed 20261113 \
+            --output artifacts/block_bootstrap_calibration.json
+      - name: Upload calibration report
+        uses: actions/upload-artifact@v4
+        with:
+          name: block-bootstrap-calibration
+          path: artifacts/block_bootstrap_calibration.json
+          if-no-files-found: error
+          retention-days: 14

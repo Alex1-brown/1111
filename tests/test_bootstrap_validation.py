@@ -41,6 +41,13 @@ class BootstrapValidationTests(unittest.TestCase):
         self.assertLess(first["p_value"], 0.05)
         self.assertGreater(first["ci_lower"], 0.0)
         self.assertGreater(first["ci_upper"], first["ci_lower"])
+        self.assertEqual(
+            first["p_value_status"], "sensitivity_only_not_calibrated_for_inference"
+        )
+        self.assertEqual(
+            first["ci_status"], "sensitivity_only_not_calibrated_for_inference"
+        )
+        self.assertFalse(first["inferential_use_permitted"])
 
 
 if __name__ == "__main__":

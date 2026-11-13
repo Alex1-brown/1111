@@ -45,25 +45,27 @@ The current MODIS Terra true-colour GIBS PNGs are browse imagery and cannot be u
 
 ## Non-parametric trend analysis
 
-The report supplements descriptive OLS slopes with Mann–Kendall/Sen estimates for annual temperature and precipitation and Seasonal Mann–Kendall statistics on year-month aggregates. For at least 10 equally spaced observations, the test attempts the Hamed–Rao (1998) modified variance correction using significant autocorrelations of detrended ranks. The same variance is used for a nominal 95% Sen-slope interval. This is an approximate correction, not a guarantee that dependence is fully removed.
+The analytical core calculates Mann–Kendall scores, Sen slopes and Seasonal Mann–Kendall summaries. The current Hamed–Rao (1998) implementation is retained as a sensitivity diagnostic, not an inferential test: the project-specific Gaussian AR(1) calibration found rejection rates above the nominal 0.05 level in several scenarios. Its p-values and variance-based slope intervals are not used to claim significance.
 
-Annual series with 3–8 observations use an exact permutation p-value under an iid assumption. The Hamed–Rao correction is not attempted for fewer than 10 observations, irregular time spacing, or an unestimable detrended-rank autocorrelation function. Seasonal correction is applied within each calendar-month stratum only when every contributing stratum meets those requirements. The current five-year NASA POWER window is too short for this correction; its p-values remain exploratory. For spatial NDVI, only corrected pixel p-values (plus exactly constant series with p=1) enter the Benjamini–Yekutieli family. Other pixels retain Sen slopes and an iid reference p-value, but their adjusted p-value and q-value are null.
+A separate calibration of the repository's residual circular moving-block bootstrap also failed: empirical null rejection ranged from 1.5% to 26.0%, and nominal 95% Sen-interval coverage ranged from 60.5% to 93.0% across the tested AR(1) scenarios. Its p-values, BY-transformed q-values and percentile intervals are sensitivity diagnostics only. See [SERIAL_CORRELATION_AUDIT.md](SERIAL_CORRELATION_AUDIT.md) and [BLOCK_BOOTSTRAP_AUDIT.md](BLOCK_BOOTSTRAP_AUDIT.md).
+
+Short 3–8 point series may receive an exact permutation p-value only under an iid/exchangeability assumption; this does not correct serial dependence. The current five-year NASA POWER window is exploratory. For nonconstant spatial NDVI series, inferential p-values and q-values are withheld. Sen slopes remain descriptive effect-size estimates. A BY adjustment is not run on uncalibrated p-values.
 
  
 ## Spatial trend statistics
 
-The spatial analysis module supports per-pixel annual NDVI medians, Sen slopes, Hamed–Rao corrected Mann–Kendall inference for eligible regular series, and Benjamini–Yekutieli q-values over the eligible pixel family. Irregular or otherwise ineligible series have no adjusted p-value or q-value. The live pipeline reads pixel coordinates from the COG affine transform and CRS, then transforms pixel centers to EPSG:4326.
+The spatial analysis module supports per-pixel annual NDVI medians, Sen slopes, coverage diagnostics and dependence-sensitivity metadata. Because the current Hamed–Rao and residual block-bootstrap implementations failed the project's AR(1) calibration checks, nonconstant pixel p-values and BY q-values are withheld. The live pipeline reads pixel coordinates from the COG affine transform and CRS, then transforms pixel centers to EPSG:4326.
 
 
 ## Quantitative satellite vegetation analysis
 
-The live CLI now retrieves NASA MODIS/Terra MOD13Q1.061 NDVI and pixel-reliability COGs through the public Microsoft Planetary Computer STAC API. It uses the official collection ID, public container-scoped SAS token for the COG storage container, and the source COG affine transform/CRS for pixel geolocation. It selects the available 16-day composites for the requested period, retains the raw NDVI and QA values, applies the 0.0001 NDVI scale factor, and accepts only pixel-reliability code 0 for the analysis. It aggregates valid composites to annual per-pixel medians, calculates Mann-Kendall/Sen trends, applies Benjamini-Yekutieli spatial multiple-testing correction, and exports pixel trend points as GeoJSON plus CSV summaries.
+The live CLI now retrieves NASA MODIS/Terra MOD13Q1.061 NDVI and pixel-reliability COGs through the public Microsoft Planetary Computer STAC API. It uses the official collection ID, public container-scoped SAS token for the COG storage container, and the source COG affine transform/CRS for pixel geolocation. It selects the available 16-day composites for the requested period, retains the raw NDVI and QA values, applies the 0.0001 NDVI scale factor, and accepts only pixel-reliability code 0 for the analysis. It aggregates valid composites to annual per-pixel medians, calculates descriptive Sen slopes and diagnostic Mann–Kendall statistics, and exports pixel trend points as GeoJSON plus CSV summaries. Spatial p/q inference and BY correction for nonconstant pixels are withheld pending a calibrated dependence-aware test.
 
 Default NDVI period: 2001-01-01 through 2025-12-31; local subset radius: 2 km around the POWER reference coordinate (approximately 4 × 4 km). The live data source is the explicit MOD13Q1.061 STAC collection; item IDs are checked for collection 061. COG pixel windows are read using HTTP range requests and a container-scoped Planetary Computer SAS token. The report records collection ID, tile IDs, COG grid CRS/transform and quality policy. Trend inference automatically selects the longest contiguous interval with at least 11 monthly composites per year; the current tile's robust core period is 2003-2023, while 2024-2025 are incomplete and are excluded from long-term trend tests.
 
 Licensing note: the Planetary Computer STAC collection declares its license as proprietary, while listing NASA LP DAAC as producer/licensor/processor. Before redistributing source assets, follow the collection's current license metadata, NASA LP DAAC citation guidance and Planetary Computer data-license terms.
 
-Important limits: NDVI is a vegetation indicator, not a direct measurement of climate or air temperature. Annual aggregation suppresses seasonality. Hamed–Rao is an approximate variance correction for regularly spaced series with at least 10 observations; short/irregular series are not corrected. Pettitt change-point p-values remain unadjusted for serial dependence. BY q-values are conditional on the eligible pixel family and do not establish causation.
+Important limits: NDVI is a vegetation indicator, not a direct measurement of climate or air temperature. Annual aggregation suppresses seasonality. Both current dependence-aware trend tests failed project-specific AR(1) calibration; their p-values and intervals are diagnostic only. Pettitt change-point p-values remain unadjusted for serial dependence. No nonconstant spatial p/q significance claims are currently made.
 
 
 ## SVG visualization layer
@@ -102,11 +104,11 @@ See [DATA_AND_SOFTWARE_LICENSES.md](DATA_AND_SOFTWARE_LICENSES.md) for NASA data
 
 ## Statistical robustness check
 
-After downloading and extracting a live-data artifact, run the offline residual moving-block bootstrap sensitivity analysis with `python -m science_core.bootstrap_validation artifacts`. See [VALIDATION_REPORT.md](VALIDATION_REPORT.md) for the current Dushanbe result and its limitations.
+After downloading and extracting a live-data artifact, run `python -m science_core.bootstrap_validation artifacts` only as a sensitivity analysis. Its p-values, BY transforms and percentile intervals are not calibrated for inference. See [BLOCK_BOOTSTRAP_AUDIT.md](BLOCK_BOOTSTRAP_AUDIT.md) for the reproducible AR(1) calibration and [VALIDATION_REPORT.md](VALIDATION_REPORT.md) for historical results and limitations.
 
 ## Independent Landsat cross-check
 
-The validation workflow also compares summer Landsat 8/9 Collection 2 Level-2 NDVI with the nearest quality-screened MOD13Q1 composite in the same Dushanbe window. Landsat pixels are screened with QA_PIXEL, QA_RADSAT, and SR_QA_AEROSOL (including high-aerosol rejection); sensor-date pairs more than 24 days apart are rejected. Run `python -m science_core.landsat_validation artifacts` after extracting the NASA artifact. The published first-run Landsat statistics remain provisional until the stricter aerosol-screened live validation is rerun. See [VALIDATION_REPORT.md](VALIDATION_REPORT.md) for methods, results, and limitations.
+The validation workflow also compares summer Landsat 8/9 Collection 2 Level-2 NDVI with the nearest quality-screened MOD13Q1 composite in the same Dushanbe window. Landsat pixels are screened with QA_PIXEL, QA_RADSAT, and SR_QA_AEROSOL (including high-aerosol rejection); sensor-date pairs more than 24 days apart are rejected. Run `python -m science_core.landsat_validation artifacts` after extracting the NASA artifact. The current QA-v3 result has nine usable years; its nominal iid p-values and intervals do not correct for temporal autocorrelation. The block-bootstrap method is not used for inference. See [VALIDATION_REPORT.md](VALIDATION_REPORT.md) for methods, results, and limitations.
 
 
 ## GPM IMERG Final Daily adapter (credential-gated)
