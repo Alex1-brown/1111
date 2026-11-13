@@ -206,41 +206,41 @@ footer{{margin-top:34px;color:var(--muted);font-size:13px}}
 <p id="hero-subtitle">Explore quality-screened NASA satellite and climate observations</p>
 <p>Generated: {html.escape(str(report.get("generated_at_utc", "unknown")))}</p></header>
 <div class="metrics">
-<div class="metric"><strong>{metric(ndvi.get("composite_count"))}</strong><span>Monthly MODIS composites selected</span></div>
-<div class="metric"><strong>{metric(ndvi.get("available_composite_count"))}</strong><span>Available 16-day MODIS composites</span></div>
-<div class="metric"><strong>{metric(ndvi.get("fixed_panel_pixels"))}</strong><span>Pixels in fixed annual panel</span></div>
-<div class="metric"><strong>{metric(paired_days)}</strong><span>Paired NASA POWER days</span></div>
-<div class="metric"><strong>{metric(common_months)}</strong><span>Common monthly observations</span></div>
-<div class="metric"><strong>{html.escape(trend_period_text)}</strong><span>MODIS core trend period</span></div>
-<div class="metric"><strong>{html.escape(str(change_year))}</strong><span>Pettitt candidate change year</span></div>
+<div class="metric"><strong>{metric(ndvi.get("composite_count"))}</strong><span id="metric-composites">Monthly MODIS composites selected</span></div>
+<div class="metric"><strong>{metric(ndvi.get("available_composite_count"))}</strong><span id="metric-available">Available 16-day MODIS composites</span></div>
+<div class="metric"><strong>{metric(ndvi.get("fixed_panel_pixels"))}</strong><span id="metric-pixels">Pixels in fixed annual panel</span></div>
+<div class="metric"><strong>{metric(paired_days)}</strong><span id="metric-days">Paired NASA POWER days</span></div>
+<div class="metric"><strong>{metric(common_months)}</strong><span id="metric-months">Common monthly observations</span></div>
+<div class="metric"><strong>{html.escape(trend_period_text)}</strong><span id="metric-period">MODIS core trend period</span></div>
+<div class="metric"><strong>{html.escape(str(change_year))}</strong><span id="metric-change">Pettitt candidate change year</span></div>
 </div>
 <section class="panel" id="quick-guide"><h3 id="guide-title">How to read this report</h3><p id="guide-text">Start with the summary numbers, inspect the spatial grid and charts, then read the method limits before drawing conclusions. Blue means decreasing NDVI; orange means increasing NDVI. A blank cell means no estimate.</p></section>
 <h2 id="spatial">Spatial NDVI trend grid</h2>
 <section class="panel">
-<div class="legend"><span><i class="swatch" style="background:#2563eb"></i>NDVI decreasing</span>
-<span><i class="swatch" style="background:#dc6923"></i>NDVI increasing</span>
-<span><i class="swatch" style="background:#d1d5db"></i>No trend estimate</span></div>
-<p class="muted">Cell colour encodes descriptive Sen slope direction and magnitude, not statistical significance. Hamed–Rao and residual block-bootstrap p/q values are diagnostic only; nonconstant pixel series are excluded from the BY inferential family pending calibration.</p>
-<div class="grid-wrap"><div>{grid_html}</div><div><h3>Pixel details</h3><div id="pixel-detail">Select a grid cell to inspect its descriptive Sen slope, nominal uncalibrated interval, Hamed–Rao sensitivity result and inferential status.</div>
-<p class="muted">Grid rows and columns follow the MODIS COG subset window. This is a spatial sample grid, not a political or street map.</p></div></div>
+<div class="legend"><span id="legend-decrease"><i class="swatch" style="background:#2563eb"></i>NDVI decreasing</span>
+<span id="legend-increase"><i class="swatch" style="background:#dc6923"></i>NDVI increasing</span>
+<span id="legend-missing"><i class="swatch" style="background:#d1d5db"></i>No trend estimate</span></div>
+<p class="muted" id="grid-explanation">Cell colour encodes descriptive Sen slope direction and magnitude, not statistical significance. Hamed–Rao and residual block-bootstrap p/q values are diagnostic only; nonconstant pixel series are excluded from the BY inferential family pending calibration.</p>
+<div class="grid-wrap"><div>{grid_html}</div><div><h3 id="pixel-title">Pixel details</h3><div id="pixel-detail">Select a grid cell to inspect its descriptive Sen slope, nominal uncalibrated interval, Hamed–Rao sensitivity result and inferential status.</div>
+<p class="muted" id="grid-note">Grid rows and columns follow the MODIS COG subset window. This is a spatial sample grid, not a political or street map.</p></div></div>
 </section>
 <h2 id="charts">Time-series visualizations</h2>
 {''.join(charts)}
 <h2 id="cross-source">Cross-source monthly associations</h2>
-<section class="panel">{cross_table}<p class="muted">Correlations are exploratory associations; they do not establish causation or validate one physical variable against another.</p></section>
+<section class="panel">{cross_table}<p class="muted" id="cross-note">Correlations are exploratory associations; they do not establish causation or validate one physical variable against another.</p></section>
 <h2 id="methods">Methods and quality controls</h2>
 <section class="panel">
 <ul>
-<li>NASA POWER daily 2 m air temperature and corrected precipitation.</li>
-<li>NASA MODIS/Terra MOD13Q1.061 250 m NDVI, one 16-day composite selected per calendar month.</li>
-<li>Only pixel-reliability code 0 enters NDVI analysis; annual pixel medians require at least three valid composites.</li>
-<li>Annual spatial summaries use a fixed pixel cohort present in every requested year; changing coverage is shown separately.</li>
-<li>Per-pixel Sen slopes are descriptive. Hamed–Rao and residual moving-block bootstrap p/q values and percentile intervals are sensitivity diagnostics only; neither current method is calibrated for inferential use.</li>
-<li>After the AR(1) calibration audit, nonconstant Hamed–Rao p-values are withheld from the spatial Benjamini–Yekutieli inferential family. Only constant no-trend series retain p=1; iid p-values are reference-only.</li>
-<li>Pettitt single-change-point screening and robust median-absolute-deviation anomaly screening.</li>
+<li id="method-power">NASA POWER daily 2 m air temperature and corrected precipitation.</li>
+<li id="method-modis">NASA MODIS/Terra MOD13Q1.061 250 m NDVI, one 16-day composite selected per calendar month.</li>
+<li id="method-quality">Only pixel-reliability code 0 enters NDVI analysis; annual pixel medians require at least three valid composites.</li>
+<li id="method-panel">Annual spatial summaries use a fixed pixel cohort present in every requested year; changing coverage is shown separately.</li>
+<li id="method-sen">Per-pixel Sen slopes are descriptive. Hamed–Rao and residual moving-block bootstrap p/q values and percentile intervals are sensitivity diagnostics only; neither current method is calibrated for inferential use.</li>
+<li id="method-inference">After the AR(1) calibration audit, nonconstant Hamed–Rao p-values are withheld from the spatial Benjamini–Yekutieli inferential family. Only constant no-trend series retain p=1; iid p-values are reference-only.</li>
+<li id="method-screening">Pettitt single-change-point screening and robust median-absolute-deviation anomaly screening.</li>
 </ul></section>
 <h2 id="limits">Interpretation limits</h2>
-<section class="caveat">
+<section class="caveat" id="limits-text">
 The project-specific stationary Gaussian AR(1) calibration found that the current Hamed–Rao p-values do not maintain nominal 0.05 rejection rates. The separate residual moving-block bootstrap calibration found null rejection rates of 1.5–26.0% and nominal 95% Sen-interval coverage of 60.5–93.0% across the tested scenarios. Both methods are sensitivity diagnostics only; their p/q values and intervals are not calibrated for inferential use, and nonconstant pixel p/q fields are withheld. iid p-values are reference-only. Pettitt p-values remain unadjusted for serial dependence. NDVI measures vegetation greenness, not temperature or precipitation. POWER is gridded data, not a local weather-station record. Correlation does not prove causation. The spatial grid is a local sample, not a region-wide census. See the repository's SERIAL_CORRELATION_AUDIT.md and BLOCK_BOOTSTRAP_AUDIT.md for the calibration details.
 </section>
 <footer>Data sources: <a href="https://power.larc.nasa.gov/">NASA POWER</a>; <a href="https://doi.org/10.5067/MODIS/MOD13Q1.061">NASA LP DAAC MOD13Q1.061</a>; <a href="https://planetarycomputer.microsoft.com/api/stac/v1/collections/modis-13Q1-061">Microsoft Planetary Computer STAC collection</a>. Consult the repository README for citation, licensing notes and reproducibility instructions. Statistical calibration audits: <a href="https://github.com/Alex1-brown/1111/blob/main/BLOCK_BOOTSTRAP_AUDIT.md">block-bootstrap audit</a>.</footer>
