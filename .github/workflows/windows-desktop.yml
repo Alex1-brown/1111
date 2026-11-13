@@ -1,0 +1,31 @@
+name: Windows desktop validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'science_core/desktop.py'
+      - 'tests/test_desktop.py'
+      - '.github/workflows/windows-desktop.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-smoke-test:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check Tkinter availability
+        run: python -c "import tkinter; print('Tkinter available:', tkinter.TkVersion)"
+      - name: Compile desktop launcher
+        run: python -m py_compile science_core/desktop.py
+      - name: Run desktop launcher tests
+        run: python -m unittest tests.test_desktop -v
