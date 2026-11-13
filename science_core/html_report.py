@@ -263,7 +263,8 @@ const translations = {{
     "method-panel":"Annual spatial summaries use a fixed pixel cohort present in every requested year; changing coverage is shown separately.",
     "method-sen":"Per-pixel Sen slopes are descriptive. Hamed–Rao and residual moving-block bootstrap p/q values and percentile intervals are sensitivity diagnostics only; neither current method is calibrated for inferential use.",
     "method-inference":"After the AR(1) calibration audit, nonconstant Hamed–Rao p-values are withheld from the spatial Benjamini–Yekutieli inferential family. Only constant no-trend series retain p=1; iid p-values are reference-only.",
-    "method-screening":"Pettitt single-change-point screening and robust median-absolute-deviation anomaly screening."
+    "method-screening":"Pettitt single-change-point screening and robust median-absolute-deviation anomaly screening.",
+    "limits-text":"The project-specific stationary Gaussian AR(1) calibration found that the current Hamed–Rao p-values do not maintain nominal 0.05 rejection rates. The separate residual moving-block bootstrap calibration found null rejection rates of 1.5–26.0% and nominal 95% Sen-interval coverage of 60.5–93.0% across tested scenarios. Both methods are sensitivity diagnostics only; their p/q values and intervals are not calibrated for inferential use. iid p-values are reference-only. Pettitt p-values remain unadjusted for serial dependence. NDVI measures vegetation greenness, not temperature or precipitation. POWER is gridded data, not a local weather-station record. Correlation does not prove causation. The spatial grid is a local sample, not a region-wide census."
   }},
   ru: {{
     "nav-overview":"Обзор","nav-spatial":"Карта трендов","nav-charts":"Графики","nav-methods":"Методы",
@@ -281,7 +282,8 @@ const translations = {{
     "method-panel":"Годовые пространственные сводки используют постоянный набор пикселей, присутствующих во все годы; изменение покрытия показывается отдельно.",
     "method-sen":"Наклоны Сена для пикселей являются описательными. Значения p/q и интервалы методов Хамеда—Рао и блочного бутстрэпа используются только для анализа чувствительности: ни один из методов пока не откалиброван для статистических выводов.",
     "method-inference":"После проверки AR(1) неконстантные p-значения Хамеда—Рао исключены из пространственного семейства проверки Бенджамини—Йекутиели. Для постоянных рядов без тренда сохраняется p=1; значения iid приводятся только для справки.",
-    "method-screening":"Поиск одной точки изменения методом Питтита и выявление аномалий по медианному абсолютному отклонению."
+    "method-screening":"Поиск одной точки изменения методом Питтита и выявление аномалий по медианному абсолютному отклонению.",
+    "limits-text":"Калибровка на стационарных гауссовских рядах AR(1), проведённая для проекта, показала, что текущие p-значения Хамеда—Рао не обеспечивают номинальную частоту ложных отклонений 0,05. Отдельная проверка остаточного блочного бутстрэпа показала частоту ложных отклонений 1,5–26,0% и покрытие номинального 95%-го интервала наклона Сена 60,5–93,0% в проверенных сценариях. Оба метода используются только для анализа чувствительности; их значения p/q и интервалы не откалиброваны для статистических выводов. Значения iid приводятся только для справки. p-значения Питтита не скорректированы на серийную зависимость. NDVI измеряет зелёность растительности, а не температуру или осадки. NASA POWER предоставляет сеточные оценки, а не показания местной метеостанции. Корреляция не доказывает причинность. Пространственная сетка представляет локальную выборку, а не перепись всего региона."
   }}
 }};
 let currentLanguage = "en";
