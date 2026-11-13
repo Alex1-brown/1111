@@ -51,7 +51,7 @@ The system answers the central trend-detection questions:
 - **What changed?** — identifies the indicator and detected pattern.
 - **Where?** — maps the spatial distribution of per-pixel trends.
 - **How much?** — estimates change rates with Sen's slope.
-- **How well supported?** — reports coverage, QA filters, descriptive Sen slopes and explicit uncertainty limits. Inferential p/q claims for nonconstant spatial pixels are withheld because both current dependence-aware methods failed AR(1) calibration. The QA-v3 Landsat comparison has nine usable years; its nominal iid p-value is 0.076 and its interval crosses zero, so it does not independently confirm a significant MODIS trend.
+- **How well supported?** — reports coverage, QA filters, descriptive Sen slopes and explicit uncertainty limits. Inferential p/q claims for nonconstant spatial pixels are withheld because both current dependence-aware methods failed AR(1) calibration. The QA-v3 Landsat comparison has nine usable years; its nominal iid normal-approximation p-value is 0.076 and its interval crosses zero. Neither statistic corrects temporal autocorrelation, so it does not independently confirm a significant MODIS trend.
 
 It also makes incomplete coverage visible. Years with insufficient monthly observations are excluded from trend inference rather than being silently treated as complete.
 
