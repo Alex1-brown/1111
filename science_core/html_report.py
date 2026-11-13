@@ -220,7 +220,7 @@ footer{{margin-top:34px;color:var(--muted);font-size:13px}}
 <div class="legend"><span><i class="swatch" style="background:#2563eb"></i>NDVI decreasing</span>
 <span><i class="swatch" style="background:#dc6923"></i>NDVI increasing</span>
 <span><i class="swatch" style="background:#d1d5db"></i>No trend estimate</span></div>
-<p class="muted">Cell colour encodes Sen slope direction and magnitude, not statistical significance. Hamed–Rao p-values are diagnostic only; nonconstant pixel series are excluded from the BY inferential family pending calibration.</p>
+<p class="muted">Cell colour encodes descriptive Sen slope direction and magnitude, not statistical significance. Hamed–Rao and residual block-bootstrap p/q values are diagnostic only; nonconstant pixel series are excluded from the BY inferential family pending calibration.</p>
 <div class="grid-wrap"><div>{grid_html}</div><div><h3>Pixel details</h3><div id="pixel-detail">Select a grid cell to inspect its Sen slope, confidence interval, Hamed–Rao sensitivity result and inferential status.</div>
 <p class="muted">Grid rows and columns follow the MODIS COG subset window. This is a spatial sample grid, not a political or street map.</p></div></div>
 </section>
@@ -235,15 +235,15 @@ footer{{margin-top:34px;color:var(--muted);font-size:13px}}
 <li>NASA MODIS/Terra MOD13Q1.061 250 m NDVI, one 16-day composite selected per calendar month.</li>
 <li>Only pixel-reliability code 0 enters NDVI analysis; annual pixel medians require at least three valid composites.</li>
 <li>Annual spatial summaries use a fixed pixel cohort present in every requested year; changing coverage is shown separately.</li>
-<li>Per-pixel Sen slopes and intervals; Hamed–Rao modified Mann–Kendall p-values are retained as sensitivity diagnostics for at least ten equally spaced observations with estimable detrended-rank autocorrelation.</li>
+<li>Per-pixel Sen slopes are descriptive. Hamed–Rao and residual moving-block bootstrap p/q values and percentile intervals are sensitivity diagnostics only; neither current method is calibrated for inferential use.</li>
 <li>After the AR(1) calibration audit, nonconstant Hamed–Rao p-values are withheld from the spatial Benjamini–Yekutieli inferential family. Only constant no-trend series retain p=1; iid p-values are reference-only.</li>
 <li>Pettitt single-change-point screening and robust median-absolute-deviation anomaly screening.</li>
 </ul></section>
 <h2 id="limits">Interpretation limits</h2>
 <section class="caveat">
-The project-specific stationary Gaussian AR(1) calibration found that the current Hamed–Rao p-values do not maintain nominal 0.05 rejection rates across the tested sample sizes and autocorrelation coefficients. They remain sensitivity diagnostics only and are excluded from the spatial BY inferential family for nonconstant pixel series until the lag-selection method is recalibrated. iid p-values are reference-only. The benchmark does not assess Sen-interval coverage; intervals using the same modified variance remain approximate. Pettitt p-values remain unadjusted for serial dependence. NDVI measures vegetation greenness, not temperature or precipitation. POWER is gridded data, not a local weather-station record. Correlation does not prove causation. The spatial grid is a local sample, not a region-wide census.
+The project-specific stationary Gaussian AR(1) calibration found that the current Hamed–Rao p-values do not maintain nominal 0.05 rejection rates. The separate residual moving-block bootstrap calibration found null rejection rates of 1.5–26.0% and nominal 95% Sen-interval coverage of 60.5–93.0% across the tested scenarios. Both methods are sensitivity diagnostics only; their p/q values and intervals are not calibrated for inferential use, and nonconstant pixel p/q fields are withheld. iid p-values are reference-only. Pettitt p-values remain unadjusted for serial dependence. NDVI measures vegetation greenness, not temperature or precipitation. POWER is gridded data, not a local weather-station record. Correlation does not prove causation. The spatial grid is a local sample, not a region-wide census. See the repository's SERIAL_CORRELATION_AUDIT.md and BLOCK_BOOTSTRAP_AUDIT.md for the calibration details.
 </section>
-<footer>Data sources: <a href="https://power.larc.nasa.gov/">NASA POWER</a>; <a href="https://doi.org/10.5067/MODIS/MOD13Q1.061">NASA LP DAAC MOD13Q1.061</a>; <a href="https://planetarycomputer.microsoft.com/api/stac/v1/collections/modis-13Q1-061">Microsoft Planetary Computer STAC collection</a>. Consult the repository README for citation, licensing notes and reproducibility instructions.</footer>
+<footer>Data sources: <a href="https://power.larc.nasa.gov/">NASA POWER</a>; <a href="https://doi.org/10.5067/MODIS/MOD13Q1.061">NASA LP DAAC MOD13Q1.061</a>; <a href="https://planetarycomputer.microsoft.com/api/stac/v1/collections/modis-13Q1-061">Microsoft Planetary Computer STAC collection</a>. Consult the repository README for citation, licensing notes and reproducibility instructions. Statistical calibration audits: <a href="https://github.com/Alex1-brown/1111/blob/main/BLOCK_BOOTSTRAP_AUDIT.md">block-bootstrap audit</a>.</footer>
 <script>
 const reportData = {safe_report};
 const translations = {{
