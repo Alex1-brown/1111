@@ -58,7 +58,7 @@ class HTMLReportTests(unittest.TestCase):
             self.assertIn("translations", html)
             self.assertIn("Select a grid cell", html)
             self.assertIn("Hamed–Rao and residual block-bootstrap p/q values are diagnostic only", html)
-            self.assertIn("nominal 95% CI", html)
+            self.assertIn("nominal 95% Sen interval (not calibrated)", html)
             self.assertIn("[-0.01500, -0.00500] NDVI/year", html)
             self.assertIn("Hamed-Rao variance sensitivity computed", html)
             self.assertIn("Hamed-Rao sensitivity p-value 0.02 is diagnostic only", html)
