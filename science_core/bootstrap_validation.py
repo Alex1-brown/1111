@@ -304,7 +304,7 @@ def validate_artifact(
         "spatial_replicates_per_pixel": spatial_replicates,
         "fixed_panel_replicates": fixed_panel_replicates,
         "block_lengths_years": list(block_lengths),
-        "hamed_rao_by_q_le_0_05": hamed_rao_count,
+        "hamed_rao_diagnostic_q_le_0_05": hamed_rao_count,
         "bootstrap_sensitivity_q_le_0_05": {
             str(length): len(bootstrap_significant[length]) for length in block_lengths
         },
