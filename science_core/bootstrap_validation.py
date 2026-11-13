@@ -1,11 +1,10 @@
-"""Offline moving-block bootstrap sensitivity analysis for MODIS NDVI trends.
+"""Offline residual moving-block bootstrap sensitivity analysis for MODIS NDVI.
 
 Run after extracting a NASA live-data artifact:
     python -m science_core.bootstrap_validation artifacts --spatial-replicates 5000
 
-This is a sensitivity analysis. Hamed-Rao p-values are retained only as
-diagnostics pending empirical calibration; block-bootstrap p-values are
-adjusted within their own complete, consecutive pixel family.
+Hamed-Rao and block-bootstrap p/q values are diagnostic only pending empirical
+calibration. BY adjustment cannot repair miscalibrated input p-values.
 """
 from __future__ import annotations
 
@@ -60,13 +59,12 @@ def moving_block_bootstrap_mk(
     seed: int,
     slope_interval: bool = False,
 ) -> dict[str, float | int | None]:
-    """Residual circular moving-block bootstrap after Sen detrending.
+    """Residual circular moving-block bootstrap, retained as sensitivity only.
 
-    The null series is assembled from circular blocks of detrended residuals.
     The two-sided empirical p-value compares absolute bootstrap S statistics
-    with the observed absolute S. If requested, the 95% percentile interval
-    resamples residuals and adds the fitted Sen trend back before re-estimating
-    Sen slope.
+    with the observed absolute S. If requested, the percentile interval
+    resamples detrended residuals and adds the fitted Sen trend back. Neither
+    output is calibrated for inferential use; see BLOCK_BOOTSTRAP_AUDIT.md.
     """
     years = np.asarray(years, dtype=float)
     values = np.asarray(values, dtype=float)
@@ -103,8 +101,11 @@ def moving_block_bootstrap_mk(
         "replicates": replicates,
         "p_value": (exceedances + 1) / (replicates + 1),
         "block_length": block_length,
+        "p_value_status": "sensitivity_only_not_calibrated_for_inference",
+        "inferential_use_permitted": False,
         "ci_lower": None,
         "ci_upper": None,
+        "ci_status": None,
     }
 
     if slope_interval:
@@ -118,6 +119,7 @@ def moving_block_bootstrap_mk(
         lower, upper = np.quantile(bootstrap_slopes, [0.025, 0.975])
         result["ci_lower"] = float(lower)
         result["ci_upper"] = float(upper)
+        result["ci_status"] = "sensitivity_only_not_calibrated_for_inference"
     return result
 
 
@@ -208,9 +210,11 @@ def validate_artifact(
             "hamed_rao_p_value_sensitivity": (
                 float(hamed_rao_p) if hamed_rao_p not in (None, "") else None
             ),
-            "hamed_rao_q_value_by": (
+            "hamed_rao_q_value_by_sensitivity": (
                 float(hamed_rao_q) if hamed_rao_q not in (None, "") else None
             ),
+            "inference_status": "withheld_pending_AR1_calibration",
+            "inferential_use_permitted": False,
         }
         if item.get("by_q_le_0_05_in_eligible_family") == "True":
             hamed_rao_significant.add((row, column))
@@ -222,7 +226,7 @@ def validate_artifact(
                 replicates=spatial_replicates,
                 seed=seed + row * 100 + column + length * 100000,
             )
-            record[f"p_block_{length}"] = result["p_value"]
+            record[f"p_block_{length}_sensitivity"] = result["p_value"]
             bootstrap_p[length].append(float(result["p_value"]))
         per_pixel.append(record)
 
@@ -240,11 +244,11 @@ def validate_artifact(
         flags = []
         for length in block_lengths:
             q_value = float(q_by_length[length][index])
-            record[f"q_block_{length}"] = q_value
+            record[f"q_block_{length}_sensitivity"] = q_value
             flags.append(q_value <= 0.05)
             if q_value <= 0.05:
                 bootstrap_significant[length].add((int(record["row"]), int(record["column"])))
-        record["robust_q_le_0_05_all_block_lengths"] = all(flags)
+        record["robust_sensitivity_q_le_0_05_all_block_lengths"] = all(flags)
 
     robust_all = set.intersection(*(bootstrap_significant[length] for length in block_lengths))
     length_three = 3 if 3 in block_lengths else block_lengths[0]
@@ -275,15 +279,24 @@ def validate_artifact(
         )
         for length in block_lengths
     }
+    for result in fixed_results.values():
+        result["p_value_interpretation"] = "sensitivity_only_not_calibrated_for_inference"
+        result["ci_interpretation"] = "sensitivity_only_not_calibrated_for_inference"
 
     hamed_rao_count = len(hamed_rao_significant)
     summary: dict[str, object] = {
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "method": (
             "Residual circular moving-block bootstrap after Sen detrending; two-sided "
-            "Mann-Kendall S statistic; Benjamini-Yekutieli correction within the same "
-            "temporally eligible pixel family. This is a sensitivity analysis."
+            "Mann-Kendall S statistic; Benjamini-Yekutieli transform within the same "
+            "temporally eligible pixel family. Diagnostic sensitivity only; not calibrated "
+            "for inferential use under the tested AR(1) models."
         ),
+        "inference_status": "withheld_pending_AR1_calibration",
+        "inferential_use_permitted": False,
+        "p_values_are_sensitivity_only": True,
+        "by_q_values_are_sensitivity_only": True,
+        "slope_intervals_are_sensitivity_only": True,
         "study_period": [start_year, end_year],
         "temporally_eligible_pixel_count": len(eligible),
         "bootstrap_eligible_pixel_family": len(per_pixel),
@@ -292,12 +305,12 @@ def validate_artifact(
         "fixed_panel_replicates": fixed_panel_replicates,
         "block_lengths_years": list(block_lengths),
         "hamed_rao_by_q_le_0_05": hamed_rao_count,
-        "bootstrap_by_q_le_0_05": {
+        "bootstrap_sensitivity_q_le_0_05": {
             str(length): len(bootstrap_significant[length]) for length in block_lengths
         },
-        "bootstrap_by_q_le_0_05_at_all_block_lengths": len(robust_all),
-        "hamed_rao_overlap_with_block_length_3": len(overlap_l3),
-        "hamed_rao_significant_pixels_retained_by_all_block_lengths": len(
+        "bootstrap_sensitivity_q_le_0_05_at_all_block_lengths": len(robust_all),
+        "hamed_rao_diagnostic_overlap_with_block_length_3": len(overlap_l3),
+        "hamed_rao_diagnostic_pixels_retained_by_all_block_lengths": len(
             hamed_rao_significant & robust_all
         ),
         "spatial_validation_csv": str(out_csv),
@@ -305,9 +318,10 @@ def validate_artifact(
         "interpretation_limits": [
             "The residual bootstrap assumes the detrended residual process is sufficiently stationary.",
             "Circular block length is a sensitivity parameter; results are reported for multiple lengths.",
-            "The bootstrap is a robustness check, not a replacement for the primary Hamed-Rao analysis.",
-            "BY correction is applied separately within each bootstrap block-length family.",
-            "Hamed-Rao p-values are diagnostic only and are excluded from the primary spatial BY family pending AR(1) calibration.",
+            "The current residual moving-block bootstrap is not calibrated for inferential use under the tested AR(1) null models.",
+            "Its p-values, BY-transformed q-values and percentile slope intervals are sensitivity diagnostics only.",
+            "BY adjustment does not repair uncalibrated input p-values and q<=0.05 must not be described as statistical significance.",
+            "Hamed-Rao p-values are also diagnostic only and are excluded from the spatial BY inferential family.",
             "Bootstrap results apply only to pixels with at least ten consecutive annual observations and adequate quality coverage.",
         ],
     }
