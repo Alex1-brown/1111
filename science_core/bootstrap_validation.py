@@ -58,7 +58,7 @@ def moving_block_bootstrap_mk(
     replicates: int,
     seed: int,
     slope_interval: bool = False,
-) -> dict[str, float | int | None]:
+) -> dict[str, object]:
     """Residual circular moving-block bootstrap, retained as sensitivity only.
 
     The two-sided empirical p-value compares absolute bootstrap S statistics
@@ -94,7 +94,7 @@ def moving_block_bootstrap_mk(
 
     bootstrap_scores = np.sign(samples[:, right] - samples[:, left]).sum(axis=1)
     exceedances = int(np.count_nonzero(np.abs(bootstrap_scores) >= abs(observed_s)))
-    result: dict[str, float | int | None] = {
+    result: dict[str, object] = {
         "sen_slope": slope,
         "observed_mk_s": observed_s,
         "exceedances": exceedances,
@@ -269,7 +269,7 @@ def validate_artifact(
     fixed_series.sort()
     fixed_years = np.asarray([year for year, _ in fixed_series], dtype=float)
     fixed_values = np.asarray([value for _, value in fixed_series], dtype=float)
-    fixed_results = {
+    fixed_results: dict[str, dict[str, object]] = {
         str(length): moving_block_bootstrap_mk(
             fixed_years, fixed_values,
             block_length=length,
