@@ -11,9 +11,9 @@
 
 The live pipeline retrieved 515 available Terra MOD13Q1.061 STAC items and selected 272 monthly composites. Across a 17 × 17 local pixel window it produced 78,608 raw pixel observations; 43,891 passed the strict pixel-reliability code-0 filter (55.8%). A fixed 231-pixel panel was available for every year from 2003 through 2023.
 
-Of 261 pixels with Sen-slope estimates, 233 met the temporal eligibility rules for the Hamed–Rao test and spatial Benjamini–Yekutieli family. **136 of those 233 pixels passed BY q ≤ 0.05; 135 had negative Sen slopes and one had a positive slope.** The other 28 trend estimates were excluded from adjusted spatial inference rather than being assigned an adjusted p-value.
+Of 261 pixels with Sen-slope estimates, 233 met the temporal eligibility rules used by the historical Hamed–Rao calculation. **136 of those 233 had historical BY q ≤ 0.05 (diagnostic only, not calibrated inference); 135 had negative Sen slopes and one had a positive slope.** The other 28 trend estimates were excluded from that historical adjusted family.
 
-For the fixed-panel median series, Sen slope was **−0.0026409 NDVI units/year**, Kendall tau was **−0.662**, and the Hamed–Rao Mann–Kendall p-value was **3.06 × 10⁻⁵**. The variance factor was 1.0 and no detrended-rank ACF lag crossed the configured significance threshold. Pettitt's test placed a possible change point in 2013 (p = 0.0107), but that p-value is not adjusted for temporal autocorrelation.
+For the historical fixed-panel median series, Sen slope was **−0.0026409 NDVI units/year** and Kendall tau was **−0.662**. The historical Hamed–Rao diagnostic p-value was **3.06 × 10⁻⁵** (variance factor 1.0; no detrended-rank ACF lag selected), but it is not calibrated and is not inferential evidence. Pettitt's test identified a candidate change point in 2013 (p = 0.0107); that p-value is also unadjusted for temporal autocorrelation and is a screening result only.
 
 The fixed-panel median NDVI moved from 0.2734 in 2003 to 0.20615 in 2023, a **24.6% decrease** relative to the 2003 value. This is a local vegetation-index result, not proof of a specific cause or a national trend for Tajikistan.
 
