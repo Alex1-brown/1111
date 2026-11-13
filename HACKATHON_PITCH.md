@@ -30,8 +30,8 @@ The current demonstration samples a 17 × 17 MODIS pixel window around the selec
 1. Validate source metadata, units, dates, coordinate reference systems, missing values and product version.
 2. Screen MODIS pixels using the official pixel-reliability layer.
 3. Select the longest continuous MODIS period with at least 11 monthly composites in every year. For the current location and collection snapshot, this produces a core trend period of **2003–2023**. The 2001–2002 and 2024–2025 coverage is incomplete and is not used for long-term trend inference.
-4. Calculate annual per-pixel NDVI medians, then estimate per-pixel Sen slopes and Mann–Kendall trends.
-5. Apply the Hamed–Rao (1998) modified Mann–Kendall variance correction to per-pixel annual series with at least ten equally spaced observations and estimable detrended-rank autocorrelation. Apply Benjamini–Yekutieli correction only across temporally eligible pixel tests; ineligible pixels keep descriptive slopes but no adjusted p-value or q-value.
+4. Calculate annual per-pixel NDVI medians and descriptive Sen slopes.
+5. Compute dependence diagnostics, but withhold nonconstant pixel p-values and spatial q-values: the current Hamed–Rao and residual moving-block bootstrap implementations failed the project's AR(1) calibration checks. BY correction is not applied to uncalibrated p-values.
 6. Build an annual aggregate from a fixed set of pixels present in every year of the core period, reducing bias from changing spatial coverage.
 7. Apply Pettitt change-point screening and robust median-absolute-deviation anomaly screening to annual series.
 8. Align monthly NDVI with NASA POWER temperature and precipitation anomalies over their common, adequately covered period. Correlations are exploratory associations, not causal evidence or direct validation of the climate product.
@@ -51,7 +51,7 @@ The system answers the central trend-detection questions:
 - **What changed?** — identifies the indicator and detected pattern.
 - **Where?** — maps the spatial distribution of per-pixel trends.
 - **How much?** — estimates change rates with Sen's slope.
-- **How well supported?** — reports p-values, spatial q-values, coverage, quality filters and limitations. The QA-v3 Landsat comparison currently has nine usable years; its negative Sen slope is not significant (p = 0.076, nominal 95% CI crosses zero), so it does not independently confirm the MODIS trend.
+- **How well supported?** — reports coverage, QA filters, descriptive Sen slopes and explicit uncertainty limits. Inferential p/q claims for nonconstant spatial pixels are withheld because both current dependence-aware methods failed AR(1) calibration. The QA-v3 Landsat comparison has nine usable years; its nominal iid p-value is 0.076 and its interval crosses zero, so it does not independently confirm a significant MODIS trend.
 
 It also makes incomplete coverage visible. Years with insufficient monthly observations are excluded from trend inference rather than being silently treated as complete.
 
@@ -61,8 +61,8 @@ It also makes incomplete coverage visible. Years with insufficient monthly obser
 - NDVI measures vegetation greenness; it is not air temperature or precipitation.
 - MODIS NDVI and NASA POWER have different spatial supports.
 - Correlation does not establish causation or validate either source.
-- Hamed–Rao correction is approximate and is not attempted for short, irregular or unestimable series. The five-year POWER window and Pettitt change-point p-values remain unadjusted for serial dependence.
-- Spatial BY q-values apply only to the eligible pixel family; they are not causal evidence and do not prove that all dependence has been removed.
+- The current Hamed–Rao and residual moving-block bootstrap implementations failed project-specific AR(1) calibration; their p/q values and intervals are sensitivity diagnostics only. The five-year POWER window and Pettitt change-point p-values remain unadjusted for serial dependence.
+- Spatial BY q-values are withheld for nonconstant pixels. A multiple-testing adjustment cannot repair uncalibrated input p-values.
 - The current spatial window is a local sample, not a region-wide census.
 - GPM IMERG has not yet been downloaded or analyzed. Its 0.1° grid is much coarser than MODIS NDVI, and mountainous terrain plus changing satellite constellation can affect precipitation estimates.
 - The Landsat cross-sensor comparison is a consistency check, not ground truth. Two of eleven selected years failed the valid-pixel threshold; n = 9 is too short for the configured Hamed–Rao correction, and the resulting nominal trend test is not significant.
@@ -71,7 +71,7 @@ It also makes incomplete coverage visible. Years with insufficient monthly obser
 ## Next scientific upgrades
 
 1. Improve Landsat annual coverage by examining alternative summer scenes for the two failed years while preserving the documented high-aerosol and pixel-quality screens.
-2. Benchmark the Hamed–Rao implementation against controlled AR(1) simulations and an independent reference implementation; assess sensitivity to lag selection and missing years.
+2. Develop and independently calibrate an alternative dependence-aware trend test and Sen-slope interval; do not restore p/q inference until type-I error and interval coverage are acceptable across null and trend scenarios.
 3. Obtain a spatially subsetted GPM IMERG Final Daily V07 NetCDF through authenticated GES DISC access, then compare its precipitation series with NASA POWER as a cross-source consistency check (not ground-truth validation).
 4. Add quality-screened MODIS land-surface temperature, clearly distinguished from 2 m air temperature.
 5. Expand from a local pixel window to a regional grid and evaluate sensitivity to spatial scale.
