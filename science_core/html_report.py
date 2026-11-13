@@ -132,15 +132,15 @@ def render_html_report(
         change_year = "not detected"
 
     charts = []
-    for key, title in (
-        ("annual_ndvi.svg", "Annual NDVI — fixed spatial panel"),
-        ("annual_ndvi_coverage.svg", "Annual NDVI spatial coverage"),
-        ("annual_temperature.svg", "Annual 2 m air temperature"),
-        ("annual_precipitation.svg", "Annual precipitation"),
+    for key, title, title_id in (
+        ("annual_ndvi.svg", "Annual NDVI — fixed spatial panel", "chart-title-ndvi"),
+        ("annual_ndvi_coverage.svg", "Annual NDVI spatial coverage", "chart-title-coverage"),
+        ("annual_temperature.svg", "Annual 2 m air temperature", "chart-title-temperature"),
+        ("annual_precipitation.svg", "Annual precipitation", "chart-title-precipitation"),
     ):
         if key in chart_paths:
             charts.append(
-                f"<section class='chart'><h3>{html.escape(title)}</h3>{_svg(chart_paths[key])}</section>"
+                f"<section class='chart'><h3 id='{title_id}'>{html.escape(title)}</h3>{_svg(chart_paths[key])}</section>"
             )
 
     cross_table = "<p class='muted'>Cross-source monthly analysis unavailable.</p>"
@@ -160,13 +160,13 @@ def render_html_report(
                 pearson_key = f"ndvi_vs_{variable}_pearson_r"
                 spearman_key = f"ndvi_vs_{variable}_spearman_rho"
                 rows.append(
-                    f"<tr><td>{html.escape(group_name)}: {label}</td>"
+                    f"<tr><td id='cross-row-{group_key}-{variable}'>{html.escape(group_name)}: {label}</td>"
                     f"<td>{metric(group.get(pearson_key))}</td>"
                     f"<td>{metric(group.get(spearman_key))}</td></tr>"
                 )
         if rows:
             cross_table = (
-                "<table><thead><tr><th>Comparison</th><th>Pearson r</th><th>Spearman ρ</th></tr></thead>"
+                "<table><thead><tr><th id='cross-th-comparison'>Comparison</th><th id='cross-th-pearson'>Pearson r</th><th id='cross-th-spearman'>Spearman ρ</th></tr></thead>"
                 f"<tbody>{''.join(rows)}</tbody></table>"
             )
 
@@ -204,7 +204,7 @@ footer{{margin-top:34px;color:var(--muted);font-size:13px}}
 <div class="topbar"><div class="brand">EARTH SYSTEM / DATA LAB</div><nav class="nav" aria-label="Main navigation"><a href="#overview" id="nav-overview">Overview</a><a href="#spatial" id="nav-spatial">Spatial</a><a href="#charts" id="nav-charts">Charts</a><a href="#methods" id="nav-methods">Methods</a></nav><button class="lang-toggle" id="language-toggle" type="button" aria-label="Switch interface language">Русский</button></div>
 <header id="overview"><h1>Earth System Trend Detective</h1>
 <p id="hero-subtitle">Explore quality-screened NASA satellite and climate observations</p>
-<p>Generated: {html.escape(str(report.get("generated_at_utc", "unknown")))}</p></header>
+<p><span id="generated-label">Generated:</span> {html.escape(str(report.get("generated_at_utc", "unknown")))}</p></header>
 <div class="metrics">
 <div class="metric"><strong>{metric(ndvi.get("composite_count"))}</strong><span id="metric-composites">Monthly MODIS composites selected</span></div>
 <div class="metric"><strong>{metric(ndvi.get("available_composite_count"))}</strong><span id="metric-available">Available 16-day MODIS composites</span></div>
@@ -249,7 +249,11 @@ const reportData = {safe_report};
 const translations = {{
   en: {{
     "nav-overview":"Overview","nav-spatial":"Spatial","nav-charts":"Charts","nav-methods":"Methods",
-    "hero-subtitle":"Explore quality-screened NASA satellite and climate observations",
+    "hero-subtitle":"Explore quality-screened NASA satellite and climate observations","generated-label":"Generated:",
+    "chart-title-ndvi":"Annual NDVI — fixed spatial panel","chart-title-coverage":"Annual NDVI spatial coverage","chart-title-temperature":"Annual 2 m air temperature","chart-title-precipitation":"Annual precipitation",
+    "cross-th-comparison":"Comparison","cross-th-pearson":"Pearson r","cross-th-spearman":"Spearman ρ",
+    "cross-row-anomaly_correlations-temperature":"Monthly anomalies: NDVI vs temperature","cross-row-anomaly_correlations-precipitation":"Monthly anomalies: NDVI vs precipitation",
+    "cross-row-detrended_anomaly_correlations-temperature":"Detrended anomalies: NDVI vs temperature","cross-row-detrended_anomaly_correlations-precipitation":"Detrended anomalies: NDVI vs precipitation",
     "guide-title":"How to read this report","guide-text":"Start with the summary numbers, inspect the spatial grid and charts, then read the method limits before drawing conclusions. Blue means decreasing NDVI; orange means increasing NDVI. A blank cell means no estimate.",
     "spatial":"Spatial NDVI trend grid","charts":"Time-series visualizations","cross-source":"Cross-source monthly associations","methods":"Methods and quality controls","limits":"Interpretation limits",
     "metric-composites":"Monthly MODIS composites selected","metric-available":"Available 16-day MODIS composites","metric-pixels":"Pixels in fixed annual panel","metric-days":"Paired NASA POWER days","metric-months":"Common monthly observations","metric-period":"MODIS core trend period","metric-change":"Pettitt candidate change year",
@@ -268,7 +272,11 @@ const translations = {{
   }},
   ru: {{
     "nav-overview":"Обзор","nav-spatial":"Карта трендов","nav-charts":"Графики","nav-methods":"Методы",
-    "hero-subtitle":"Анализ проверенных спутниковых и климатических данных NASA",
+    "hero-subtitle":"Анализ проверенных спутниковых и климатических данных NASA","generated-label":"Создано:",
+    "chart-title-ndvi":"Годовой NDVI — постоянная пространственная выборка","chart-title-coverage":"Покрытие пространственной выборки NDVI","chart-title-temperature":"Среднегодовая температура воздуха на высоте 2 м","chart-title-precipitation":"Годовая сумма осадков",
+    "cross-th-comparison":"Сравнение","cross-th-pearson":"Пирсон r","cross-th-spearman":"Спирмен ρ",
+    "cross-row-anomaly_correlations-temperature":"Месячные аномалии: NDVI и температура","cross-row-anomaly_correlations-precipitation":"Месячные аномалии: NDVI и осадки",
+    "cross-row-detrended_anomaly_correlations-temperature":"Аномалии без линейного тренда: NDVI и температура","cross-row-detrended_anomaly_correlations-precipitation":"Аномалии без линейного тренда: NDVI и осадки",
     "guide-title":"Как читать этот отчёт","guide-text":"Сначала изучите сводные показатели, затем пространственную сетку и графики. Перед выводами прочитайте ограничения методов. Синий цвет означает снижение NDVI, оранжевый — рост. Пустая ячейка означает отсутствие оценки.",
     "spatial":"Пространственные тренды NDVI","charts":"Временные ряды","cross-source":"Связь данных разных источников","methods":"Методы и контроль качества","limits":"Ограничения интерпретации",
     "metric-composites":"Выбранные месячные композиты MODIS","metric-available":"Доступные 16-дневные композиты MODIS","metric-pixels":"Пиксели в фиксированной годовой выборке","metric-days":"Совпадающие дни NASA POWER","metric-months":"Общие месячные наблюдения","metric-period":"Основной период тренда MODIS","metric-change":"Предполагаемый год изменения по Питтиту",
