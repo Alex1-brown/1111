@@ -30,7 +30,10 @@ jobs:
       - name: Install Android SDK components
         run: |
           echo "sdk.dir=$ANDROID_HOME" > android/local.properties
-          sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          if [ -z "$SDKMANAGER" ]; then echo "sdkmanager was not found under $ANDROID_HOME"; exit 1; fi
+          yes | "$SDKMANAGER" --licenses >/dev/null
+          "$SDKMANAGER" --install "platforms;android-35" "build-tools;35.0.0" "platform-tools"
       - name: Build debug APK
         run: gradle --no-daemon -p android assembleDebug
       - name: Upload APK
