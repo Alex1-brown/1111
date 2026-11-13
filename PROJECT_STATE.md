@@ -29,6 +29,8 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 - Outputs: JSON, CSV, GeoJSON, SVG charts, and a self-contained offline HTML report with clickable spatial trend grid.
 - `HACKATHON_PITCH.md` contains the project brief, challenge alignment, methods, safeguards and next upgrades.
 
+- Beginner-friendly Windows entry point: `science_core/desktop.py` provides a Russian Tkinter interface over the existing CLI; `START_HERE_WINDOWS.bat` creates an isolated environment and starts it. `QUICK_START_RU.md` documents first launch and report outputs.
+
 ## Important modules
 
 - `science_core/pipeline.py`, `principles.py`: six-stage orchestration.

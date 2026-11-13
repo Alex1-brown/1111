@@ -2,6 +2,10 @@
 
 A reproducible, evidence-first workflow combining NASA POWER climate observations with quality-screened NASA MODIS/Terra NDVI to analyze environmental trends, spatial patterns, coverage, and uncertainty for a local study area in Tajikistan.
 
+## Windows desktop launch
+
+For Windows 10/11, download and extract the repository ZIP, install Python 3.12 or newer, and double-click `START_HERE_WINDOWS.bat`. The first run creates an isolated `.venv` and installs dependencies; later runs reuse them. The Russian desktop interface accepts coordinates, selects an output folder, shows collection progress, and opens the generated offline HTML report. It runs the same `science_core.cli` pipeline as the command-line workflow; GIBS browse imagery is skipped by default so the primary analysis uses quantitative MODIS NDVI. See [QUICK_START_RU.md](QUICK_START_RU.md).
+
 ## Default live dataset
 - NASA POWER daily T2M and PRECTOTCORR data: 2021-01-01 through 2025-12-31.
 - NASA GIBS MODIS Terra true-colour imagery: 60 evenly sampled dates over the same period, 512 × 512 pixels.
