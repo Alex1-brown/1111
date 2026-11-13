@@ -99,7 +99,7 @@ def render_html_report(
             )
             info = (
                 f"Pixel row {row}, column {column}; Sen slope {slope_text}; "
-                f"nominal 95% CI {ci_text}; CI method: {ci_method}; BY q-value {q_text}; "
+                f"nominal 95% Sen interval (not calibrated) {ci_text}; method: {ci_method}; BY q-value {q_text}; "
                 f"annual observations {years}; {dependence_text}.{hamed_rao_text}{iid_text}"
             )
             cells.append(
@@ -221,7 +221,7 @@ footer{{margin-top:34px;color:var(--muted);font-size:13px}}
 <span><i class="swatch" style="background:#dc6923"></i>NDVI increasing</span>
 <span><i class="swatch" style="background:#d1d5db"></i>No trend estimate</span></div>
 <p class="muted">Cell colour encodes descriptive Sen slope direction and magnitude, not statistical significance. Hamed–Rao and residual block-bootstrap p/q values are diagnostic only; nonconstant pixel series are excluded from the BY inferential family pending calibration.</p>
-<div class="grid-wrap"><div>{grid_html}</div><div><h3>Pixel details</h3><div id="pixel-detail">Select a grid cell to inspect its Sen slope, confidence interval, Hamed–Rao sensitivity result and inferential status.</div>
+<div class="grid-wrap"><div>{grid_html}</div><div><h3>Pixel details</h3><div id="pixel-detail">Select a grid cell to inspect its descriptive Sen slope, nominal uncalibrated interval, Hamed–Rao sensitivity result and inferential status.</div>
 <p class="muted">Grid rows and columns follow the MODIS COG subset window. This is a spatial sample grid, not a political or street map.</p></div></div>
 </section>
 <h2 id="charts">Time-series visualizations</h2>
