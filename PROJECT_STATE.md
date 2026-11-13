@@ -36,7 +36,6 @@ Workflow: **Acquire → Validate → Clean → Process → Verify → Visualize*
 - `statistical_analysis.py`: annual/monthly/seasonal POWER summaries, descriptive OLS and correlations.
 - `trend_analysis.py`: Mann–Kendall, Sen slope, nominal Sen intervals and Hamed–Rao modified variance diagnostics for eligible regular series.
 - `block_bootstrap_benchmark.py`: reproducible AR(1) type-I-error and Sen-interval coverage benchmark for the existing residual moving-block bootstrap.
-- `block_bootstrap_benchmark.py`: reproducible AR(1) type-I-error and Sen-interval coverage benchmark for the existing residual moving-block bootstrap.
 - `change_point.py`: Pettitt single change-point test.
 - `anomaly_analysis.py`: robust MAD anomaly screening.
 - `spatial_analysis.py`: annual per-pixel NDVI medians, coverage-based core period selection, fixed-panel annual summaries, per-pixel Sen slopes, Hamed–Rao sensitivity diagnostics and a conservative inference gate.
