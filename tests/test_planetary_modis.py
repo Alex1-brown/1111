@@ -58,7 +58,7 @@ class FakeRaster:
     def window_transform(self, window):
         return Affine.translation(
             window.col_off + self.transform_shift, window.row_off
-        ) * Affine.scale(0.001, -0.001)
+        ) @ Affine.scale(0.001, -0.001)
 
 
 class PlanetaryModisTests(unittest.TestCase):

@@ -28,9 +28,9 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7.1.0
         with:
           python-version: "3.12"
       - name: Install dependencies
@@ -38,7 +38,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       - name: Download the completed NASA data artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8.0.2
         with:
           name: ${{ github.event.inputs.artifact_name || 'nasa-real-data-22' }}
           repository: Alex1-brown/1111
@@ -57,7 +57,7 @@ jobs:
           python -m science_core.landsat_validation nasa-real-data-22
       - name: Upload bootstrap sensitivity results
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: ndvi-block-bootstrap-validation
           path: |
@@ -66,7 +66,7 @@ jobs:
           if-no-files-found: error
           retention-days: 30
       - name: Upload Landsat cross-sensor results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: landsat-cross-sensor-validation
           path: |
