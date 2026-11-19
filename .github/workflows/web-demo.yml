@@ -1,0 +1,25 @@
+name: Web demo smoke tests
+
+on:
+  push:
+    branches: [web-demo]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  web-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Install scientific and web dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-web.txt
+      - name: Compile application and tests
+        run: python -m compileall -q science_core tests web_app.py
+      - name: Run offline test suite
+        run: python -m unittest discover -s tests -v
